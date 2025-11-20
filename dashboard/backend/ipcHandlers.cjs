@@ -166,7 +166,25 @@ function registerIpcHandlers() {
     };
   });
 
+
+  /**   
+   * IPC Handler: create-camp
+   * Trigger creation of a new camp (creates form, sheet, downloads xlsx)
+   */
+  const { createCamp } = require('./camp/createCamp.cjs');
+  ipcMain.handle('camp:create', async (event, args) => {
+    try {
+      const campName = args?.campName;
+      const result = await createCamp(campName, args.options || {});
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('createCamp error:', err);
+      return { success: false, error: err.message || String(err) };
+    }
+  });
+
   console.log('IPC handlers registered successfully');
+  
 }
 
 module.exports = {

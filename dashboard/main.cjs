@@ -5,6 +5,10 @@ const { registerIpcHandlers } = require('./backend/ipcHandlers.cjs');
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
 let mainWindow;
 
+// Disable GPU acceleration
+app.disableHardwareAcceleration();
+
+
 /**
  * Create the main application window
  */

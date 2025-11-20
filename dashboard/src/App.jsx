@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import Dashboard from './components/Dashboard'
+import AddCampButton from "./components/AddCampButton";
 import { api } from './api'
 
 function App() {
@@ -158,6 +159,9 @@ function App() {
                 📁 Upload Excel File
               </span>
             </label>
+            
+            <AddCampButton onClick={() => console.log("Create Camp!")} />
+
             {fileName && <div className="file-name">✓ {fileName}</div>}
           </div>
 
