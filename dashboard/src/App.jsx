@@ -10,15 +10,19 @@ function App() {
   const [error, setError] = useState(null)
   const [backendAvailable, setBackendAvailable] = useState(false)
   const [useBackend, setUseBackend] = useState(false)
+  const [appLoaded, setAppLoaded] = useState(false)
 
   // Check backend health on mount
   useEffect(() => {
     const checkBackend = async () => {
+      console.log('Checking backend availability...')
       const available = await api.checkHealth()
+      console.log('Backend available:', available)
       setBackendAvailable(available)
       if (available) {
         setUseBackend(true)
       }
+      setAppLoaded(true)
     }
     checkBackend()
   }, [])
@@ -116,39 +120,54 @@ function App() {
 
   return (
     <div className="app">
-      <div className="header">
-        <h1>⛺ Parish Summer Camp Registration Dashboard</h1>
-        <p>View and analyze registration data</p>
-        <div style={{ fontSize: '12px', marginTop: '10px', opacity: 0.7 }}>
-          {backendAvailable ? (
-            <span style={{ color: 'green' }}>✓ Backend processing active</span>
-          ) : (
-            <span style={{ color: 'orange' }}>⚠ Client-side mode only (install backend for full processing)</span>
-          )}
+      {!appLoaded ? (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          minHeight: '100vh',
+          fontSize: '18px',
+          color: '#7f8c8d'
+        }}>
+          Loading application...
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="header">
+            <h1>⛺ Parish Summer Camp Registration Dashboard</h1>
+            <p>View and analyze registration data</p>
+            <div style={{ fontSize: '12px', marginTop: '10px', opacity: 0.7 }}>
+              {backendAvailable ? (
+                <span style={{ color: 'green' }}>✓ Backend processing active</span>
+              ) : (
+                <span style={{ color: 'orange' }}>⚠ Running in local mode</span>
+              )}
+            </div>
+          </div>
 
-      <div className="file-upload">
-        <input
-          type="file"
-          accept=".xlsx,.xls"
-          onChange={handleFileUpload}
-          className="file-input"
-          id="file-input"
-        />
-        <label htmlFor="file-input">
-          <span className="upload-button" style={{ display: 'inline-block' }}>
-            📁 Upload Excel File
-          </span>
-        </label>
-        {fileName && <div className="file-name">✓ {fileName}</div>}
-      </div>
+          <div className="file-upload">
+            <input
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileUpload}
+              className="file-input"
+              id="file-input"
+            />
+            <label htmlFor="file-input">
+              <span className="upload-button" style={{ display: 'inline-block' }}>
+                📁 Upload Excel File
+              </span>
+            </label>
+            {fileName && <div className="file-name">✓ {fileName}</div>}
+          </div>
 
-      {error && <div className="error">{error}</div>}
+          {error && <div className="error">{error}</div>}
 
-      {loading && <div className="loading">Processing data...</div>}
+          {loading && <div className="loading">Processing data...</div>}
 
-      {data && <Dashboard data={data} />}
+          {data && <Dashboard data={data} />}
+        </>
+      )}
     </div>
   )
 }

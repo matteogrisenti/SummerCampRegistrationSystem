@@ -3,11 +3,20 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  server: {
-    port: 3000,
-    fs: {
-      // Allow serving files from parent directory (to access data folder)
-      allow: ['..']
+  base: './',
+  build: {
+    outDir: 'dist',
+    emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        entryFileNames: 'js/[name]-[hash].js',
+        chunkFileNames: 'js/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]'
+      }
     }
+  },
+  server: {
+    port: 5173,
+    strictPort: false
   }
 })
