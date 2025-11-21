@@ -1,4 +1,4 @@
-# 🏕️ Parish Summer Camp Registration System
+# 🏕️ Summer Camp Registration System
 
 A simple, maintainable system for processing camp registrations collected via Google Forms.
 

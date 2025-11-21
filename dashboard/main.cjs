@@ -1,5 +1,7 @@
 const { app, BrowserWindow, Menu } = require('electron');
 const path = require('path');
+const { exec } = require('child_process');
+require('dotenv').config({ path: path.join(__dirname, 'backend', '.env') });
 const { registerIpcHandlers } = require('./backend/ipcHandlers.cjs');
 
 const isDev = process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
@@ -7,6 +9,14 @@ let mainWindow;
 
 // Disable GPU acceleration
 app.disableHardwareAcceleration();
+
+app.on('second-instance', (event, argv, workingDirectory) => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore();
+    mainWindow.focus();
+  }
+  handleDeepLink(argv);
+});
 
 
 /**
@@ -60,6 +70,9 @@ const createWindow = () => {
 app.on('ready', async () => {
   console.log('App starting...');
   console.log(`Mode: ${isDev ? 'development' : 'production'}`);
+  
+  // Register custom protocol for OAuth callback
+  app.setAsDefaultProtocolClient('app');
   
   // Register all IPC handlers
   registerIpcHandlers();

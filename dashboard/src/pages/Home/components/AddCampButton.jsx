@@ -1,8 +1,12 @@
-export default function AddCampButton({ onClick, loading = false }) {
+import { useNavigate } from 'react-router-dom';
+
+export default function AddCampButton({ loading = false }) {
+  const navigate = useNavigate();
+  
   return (
     <button 
       className="add-camp-button"
-      onClick={onClick}
+      onClick={() => navigate('/NewCamp')}
       disabled={loading}
       style={{ opacity: loading ? 0.7 : 1 }}
     >
