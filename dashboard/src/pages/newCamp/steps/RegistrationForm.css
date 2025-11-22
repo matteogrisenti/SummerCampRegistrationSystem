@@ -1,0 +1,184 @@
+.registration-form-header {
+    margin-bottom: 20px;
+}
+
+.registration-form-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+}
+
+.fields-container {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.field-card {
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    background-color: #fafafa;
+}
+
+.field-card-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.drag-handle {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 6px;
+}
+
+.arrow-controls {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-top: 6px;
+}
+
+.arrow-button {
+    padding: 4px;
+    background-color: #2196F3;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.arrow-button:hover:not(:disabled) {
+    background-color: #42A5F5;
+    transform: scale(1.1);
+}
+
+.arrow-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.field-inputs {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.field-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.field-group label {
+    display: block;
+    margin-bottom: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.field-input {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #d0d0d0;
+    border-radius: 6px;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.field-input:disabled {
+    background-color: #f0f0f0;
+}
+
+.field-input-error {
+    border-color: #ef5350;
+    background-color: #ffebee;
+}
+
+.error-message {
+    color: #c62828;
+    font-size: 11px;
+    margin-top: 4px;
+    display: block;
+}
+
+.checkbox-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.checkbox-input {
+    cursor: pointer;
+}
+
+.checkbox-label {
+    font-size: 13px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.delete-button {
+    padding: 8px;
+    background-color: #ff4444;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-top: 6px;
+    transition: all 0.2s ease;
+}
+
+.delete-button:hover {
+    background-color: #ff6666;
+    transform: scale(1.05);
+}
+
+.add-field-container {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 24px;
+}
+
+.add-field-line {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background-color: #4CAF50;
+    z-index: 0;
+}
+
+.add-field-button {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+}
+
+.add-field-button:hover {
+    background-color: #66BB6A;
+    transform: scale(1.05);
+}

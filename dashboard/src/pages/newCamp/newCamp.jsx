@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api';
 import GeneralInfo from './steps/GeneralInfo';
 import RegistrationForm from './steps/RegistrationForm';
 import CampSummary from './steps/CampSummary';
+import './NewCamp.css';
 
 export default function NewCamp() {
+  const navigate = useNavigate();
   const [step, setStep] = useState(1); // 1 = GeneralInfo, 2 = RegistrationForm, 3 = Summary
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -19,12 +22,12 @@ export default function NewCamp() {
 
   const [fields, setFields] = useState([
     { id: 1, name: 'timestamp', label: 'Timestamp', description: 'Submission timestamp', required: true, removable: false },
-    { id: 2, name: 'child_name', label: 'Child Full Name', description: 'Full name of the child', required: true, removable: true },
-    { id: 3, name: 'child_age', label: 'Child Age', description: 'Age of the child', required: true, removable: true },
-    { id: 4, name: 'parent_name', label: 'Parent/Guardian Name', description: 'Name of parent or guardian', required: true, removable: true },
-    { id: 5, name: 'parent_email', label: 'Parent Email', description: 'Email address for contact', required: true, removable: true },
-    { id: 6, name: 'phone', label: 'Phone Number', description: 'Contact phone number', required: true, removable: true },
-    { id: 7, name: 'allergies', label: 'Allergies/Medical Info', description: 'Any allergies or medical information', required: false, removable: true }
+    { id: 2, name: 'child_name', label: 'Nome Cognome Ragazzo', description: 'Full name of the child', required: true, removable: true },
+    { id: 3, name: 'child_age', label: 'Età Ragazzo', description: 'Age of the child', required: true, removable: true },
+    { id: 4, name: 'parent_name', label: 'Nome Genitore/Tutore', description: 'Name of parent or guardian', required: true, removable: true },
+    { id: 5, name: 'parent_email', label: 'Email Genitore/Tutore', description: 'Email address for contact', required: true, removable: true },
+    { id: 6, name: 'phone', label: 'Numero di Telefono Genitore/Tutore', description: 'Contact phone number', required: true, removable: true },
+    { id: 7, name: 'allergies', label: 'Allergie/Informazioni Mediche', description: 'Any allergies or medical information', required: false, removable: true }
   ]);
 
   useEffect(() => {
@@ -54,6 +57,12 @@ export default function NewCamp() {
 
     // Step 2: Registration Form -> Create camp and proceed
     if (step === 2) {
+      // Validate all fields have name and label
+      if (window.validateRegistrationFields && !window.validateRegistrationFields()) {
+        setError('Please fill in all field names and labels');
+        return;
+      }
+
       // Check if Google is authenticated
       if (!googleAuth.hasToken) {
         setError('Google authentication required. Please go to Home page and click "Google Login" first.');
@@ -90,32 +99,38 @@ export default function NewCamp() {
 
   const prevStep = () => setStep(prev => Math.max(prev - 1, 1));
 
+  const handleBackButton = () => {
+    if (step === 1) {
+      navigate('/');
+    } else {
+      prevStep();
+    }
+  };
+
+  const handleNextButton = () => {
+    if (step === 3) {
+      navigate('/');
+    } else {
+      handleNextStep();
+    }
+  };
+
   return (
-    <div style={{ minHeight: '100vh', padding: '24px', backgroundColor: '#f5f5f5' }}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
+    <div className="page-container">
+      <div className="content-wrapper">
         {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <h1 style={{ fontSize: '32px', fontWeight: 'bold' }}>Create New Camp</h1>
-          <p style={{ color: '#666' }}>Follow the steps to create a new camp registration form</p>
+        <div className="page-header">
+          <h1 className="page-title">Create New Camp</h1>
+          <p className="page-subtitle">Follow the steps to create a new camp registration form</p>
         </div>
 
         {/* Auth Status Warning */}
         {googleAuth.checked && !googleAuth.hasToken && (
-          <div style={{
-            backgroundColor: '#fff3cd',
-            border: '1px solid #ffc107',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            marginBottom: '16px',
-            color: '#856404',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px'
-          }}>
-            <span style={{ fontSize: '18px' }}>⚠️</span>
+          <div className="auth-warning">
+            <span className="auth-warning-icon">⚠️</span>
             <div>
-              <strong>Google authentication required</strong>
-              <div style={{ fontSize: '13px', marginTop: '4px' }}>
+              <div className="auth-warning-title">Google authentication required</div>
+              <div className="auth-warning-text">
                 Please go to the Home page and click "🔐 Google Login" to authenticate before creating a camp.
               </div>
             </div>
@@ -123,74 +138,61 @@ export default function NewCamp() {
         )}
 
         {/* Stepper */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '24px' }}>
+        <div className="stepper">
           {['General Info', 'Registration Form', 'Camp Summary'].map((label, index) => (
-            <div key={index} style={{ textAlign: 'center', flex: 1 }}>
-              <div style={{
-                width: '30px',
-                height: '30px',
-                margin: '0 auto 8px',
-                borderRadius: '50%',
-                backgroundColor: step === index + 1 ? '#2196F3' : '#ccc',
-                color: 'white',
-                lineHeight: '30px'
-              }}>{index + 1}</div>
-              <div style={{ fontSize: '12px', color: step === index + 1 ? '#2196F3' : '#999' }}>{label}</div>
+            <div key={index} className="stepper-item">
+              <div className={`stepper-circle ${step === index + 1 ? 'active' : 'inactive'}`}>
+                {index + 1}
+              </div>
+              <div className={`stepper-label ${step === index + 1 ? 'active' : 'inactive'}`}>
+                {label}
+              </div>
             </div>
           ))}
         </div>
 
         {/* Error message */}
         {error && (
-          <div style={{
-            backgroundColor: '#ffebee',
-            border: '1px solid #ef5350',
-            borderRadius: '8px',
-            padding: '12px 16px',
-            marginBottom: '16px',
-            color: '#c62828'
-          }}>
+          <div className="error-message-box">
             {error}
           </div>
         )}
 
         {/* Step content */}
-        <div style={{ backgroundColor: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 1px 3px rgba(0,0,0,0.1)' }}>
+        <div className="step-content">
           {step === 1 && <GeneralInfo campInfo={campInfo} setCampInfo={setCampInfo} />}
           {step === 2 && <RegistrationForm fields={fields} setFields={setFields} />}
           {step === 3 && <CampSummary campInfo={campInfo} fields={fields} campData={campData} />}
+          
+          {/* Loading Overlay */}
+          {isLoading && (
+            <div className="loading-overlay">
+              <div className="loading-spinner"></div>
+              <div className="loading-text">
+                Creating your camp... This may take a few moments
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Navigation buttons */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px' }}>
+        <div className="navigation-buttons">
+          {step !== 3 && (
+            <button 
+              onClick={handleBackButton} 
+              disabled={isLoading}
+              className="nav-button back-button"
+            >
+              {step === 1 ? 'Home' : 'Back'}
+            </button>
+          )}
           <button 
-            onClick={prevStep} 
-            disabled={step === 1 || isLoading}
-            style={{ 
-              padding: '12px 24px', 
-              borderRadius: '8px', 
-              border: '1px solid #ccc',
-              backgroundColor: '#fff',
-              cursor: step === 1 || isLoading ? 'not-allowed' : 'pointer',
-              opacity: step === 1 || isLoading ? 0.6 : 1
-            }}
+            onClick={handleNextButton} 
+            disabled={isLoading || (step === 2 && !googleAuth.hasToken)}
+            className="nav-button next-button"
+            style={step === 3 ? { marginLeft: 'auto' } : {}}
           >
-            Back
-          </button>
-          <button 
-            onClick={handleNextStep} 
-            disabled={step === 3 || isLoading || (step === 2 && !googleAuth.hasToken)}
-            style={{ 
-              padding: '12px 24px', 
-              borderRadius: '8px', 
-              border: 'none', 
-              backgroundColor: '#2196F3', 
-              color: 'white',
-              cursor: step === 3 || isLoading || (step === 2 && !googleAuth.hasToken) ? 'not-allowed' : 'pointer',
-              opacity: step === 3 || isLoading || (step === 2 && !googleAuth.hasToken) ? 0.6 : 1
-            }}
-          >
-            {isLoading ? 'Creating Camp...' : 'Next'}
+            {isLoading ? 'Creating Camp...' : step === 3 ? 'Home' : 'Next'}
           </button>
         </div>
       </div>
