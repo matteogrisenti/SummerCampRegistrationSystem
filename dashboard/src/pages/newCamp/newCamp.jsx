@@ -64,7 +64,7 @@ export default function NewCamp() {
         setIsLoading(true);
         
         // Call createCamp API
-        const result = await api.createCamp(campInfo.name, { fields });
+        const result = await api.createCamp(campInfo.name, fields);
         
         if (!result.success) {
           throw new Error(result.message || 'Failed to create camp');

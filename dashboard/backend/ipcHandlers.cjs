@@ -189,7 +189,7 @@ function registerIpcHandlers() {
    */
   ipcMain.handle('auth:check-google', async (event) => {
     try {
-      const { hasToken } = require('./services/google/simpleAuth.cjs');
+      const { hasToken } = require('./services/google/auth.cjs');
       const fs = require('fs');
       const path = require('path');
       const tokenPath = path.join(__dirname, 'token.json');
@@ -214,7 +214,7 @@ function registerIpcHandlers() {
       console.log('  CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'LOADED' : 'MISSING');
       console.log('  CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'LOADED' : 'MISSING');
       
-      const { getAuthUrl, startCallbackServer, REDIRECT_URI } = require('./services/google/simpleAuth.cjs');
+      const { getAuthUrl, startCallbackServer, REDIRECT_URI } = require('./services/google/auth.cjs');
       
       // Start the localhost callback server
       await startCallbackServer();
@@ -240,7 +240,7 @@ function registerIpcHandlers() {
    */
   ipcMain.handle('auth:oauth-callback', async (event, code) => {
     try {
-      const { handleAuthCallback, stopCallbackServer } = require('./services/google/simpleAuth.cjs');
+      const { handleAuthCallback, stopCallbackServer } = require('./services/google/auth.cjs');
       await handleAuthCallback(code);
       
       // Stop the callback server after successful auth
@@ -262,7 +262,7 @@ function registerIpcHandlers() {
    */
   ipcMain.handle('auth:google-login', async (event) => {
     try {
-      const { authorize } = require('./services/google/simpleAuth.cjs');
+      const { authorize } = require('./services/google/auth.cjs');
       const auth = await authorize();
       return {
         success: true,

@@ -1,4 +1,7 @@
 // backend/utils/slugify.js
+/*
+  * Utility function to generate URL-friendly slugs from names
+*/
 const slugifyLib = require('slugify');
 
 function slugify(name) {
