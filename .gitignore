@@ -8,6 +8,7 @@ env/
 venv/
 ENV/
 .venv
+myenv/
 
 # Excel files (optional - uncomment if you don't want to commit data)
 data/*.xlsx
@@ -15,6 +16,8 @@ data/*.xlsx
 
 # Dashboard
 dashboard/node_modules/
+dashboard/backend/data/
+dashboard/build/
 dashboard/dist/
 dashboard/.vite/
 
@@ -31,3 +34,6 @@ Thumbs.db
 
 # Logs
 *.log
+client_secret_845309111706-bfiffmltmn80g3cka5amhgdn6li26sae.apps.googleusercontent.com.json
+.env
+.env.local

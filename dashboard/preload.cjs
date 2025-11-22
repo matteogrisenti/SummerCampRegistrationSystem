@@ -58,10 +58,61 @@ const api = {
     ipcRenderer.invoke('app-info'),
 
   /**
+   * Create a new camp with Google Form and Sheet
+   * @param {Object} args - Camp creation arguments
+   * @returns {Promise<Object>} Camp metadata
+   */
+  createCamp: (args) =>
+    ipcRenderer.invoke('camp:create', args),
+
+  /**
+   * Check if Google credentials exist
+   * @returns {Promise<Object>} Credentials status
+   */
+  checkGoogleAuth: () =>
+    ipcRenderer.invoke('auth:check-google'),
+
+  /**
+   * Get Google OAuth login URL
+   * @returns {Promise<Object>} Auth URL
+   */
+  getGoogleLoginUrl: () =>
+    ipcRenderer.invoke('auth:get-login-url'),
+
+  /**
+   * Handle OAuth callback with authorization code
+   * @param {string} code - Authorization code from Google
+   * @returns {Promise<Object>} Result
+   */
+  handleOAuthCallback: (code) =>
+    ipcRenderer.invoke('auth:oauth-callback', code),
+
+  /**
+   * Initiate Google OAuth login flow
+   * @returns {Promise<Object>} Auth result
+   */
+  googleLogin: () =>
+    ipcRenderer.invoke('auth:google-login'),
+
+  /**
    * Quit the application
    */
   quit: () =>
     ipcRenderer.send('app-quit'),
+
+  /**
+   * Listen for OAuth code from deep link
+   * @param {Function} callback - Called when OAuth code is received
+   */
+  onOAuthCode: (callback) =>
+    ipcRenderer.on('oauth-code', (event, code) => callback(code)),
+
+  /**
+   * Listen for OAuth errors
+   * @param {Function} callback - Called when OAuth error occurs
+   */
+  onOAuthError: (callback) =>
+    ipcRenderer.on('oauth-error', (event, error) => callback(error)),
 };
 
 /**

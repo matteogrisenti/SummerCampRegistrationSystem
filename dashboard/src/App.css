@@ -63,6 +63,38 @@ body {
   background: #2980b9;
 }
 
+.add-camp-button {
+  background: #2ecc71;        /* Verde acceso per significare "aggiungi" */
+  color: white;
+  padding: 0.75rem 2rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.3s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;                /* Spazio fra icona e testo */
+}
+
+/* Effetto hover */
+.add-camp-button:hover {
+  background: #27ae60;
+}
+
+/* Effetto click */
+.add-camp-button:active {
+  transform: scale(0.98);
+}
+
+/* Se vuoi un'icona "+" */
+.add-camp-button .icon {
+  font-size: 1.2rem;
+  font-weight: bold;
+}
+
+
 .file-name {
   margin-top: 1rem;
   color: #27ae60;

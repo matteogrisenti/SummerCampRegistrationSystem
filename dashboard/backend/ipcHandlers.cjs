@@ -166,7 +166,116 @@ function registerIpcHandlers() {
     };
   });
 
+
+  /**   
+   * IPC Handler: create-camp
+   * Trigger creation of a new camp (creates form, sheet, downloads xlsx)
+   */
+  const { createCamp } = require('./camp/createCamp.cjs');
+  ipcMain.handle('camp:create', async (event, args) => {
+    try {
+      const campName = args?.campName;
+      const result = await createCamp(campName, args.options || {});
+      return { success: true, data: result };
+    } catch (err) {
+      console.error('createCamp error:', err);
+      return { success: false, error: err.message || String(err) };
+    }
+  });
+
+  /**
+   * IPC Handler: auth:check-google
+   * Check if Google credentials exist
+   */
+  ipcMain.handle('auth:check-google', async (event) => {
+    try {
+      const { hasToken } = require('./services/google/auth.cjs');
+      const fs = require('fs');
+      const path = require('path');
+      const tokenPath = path.join(__dirname, 'token.json');
+      
+      return {
+        success: true,
+        hasCredentials: true, // We don't need credentials file
+        hasToken: hasToken()
+      };
+    } catch (err) {
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * IPC Handler: auth:get-login-url
+   * Get the Google OAuth login URL and start callback server
+   */
+  ipcMain.handle('auth:get-login-url', async (event) => {
+    try {
+      console.log('AUTH DEBUG: Starting OAuth flow...');
+      console.log('  CLIENT_ID:', process.env.GOOGLE_CLIENT_ID ? 'LOADED' : 'MISSING');
+      console.log('  CLIENT_SECRET:', process.env.GOOGLE_CLIENT_SECRET ? 'LOADED' : 'MISSING');
+      
+      const { getAuthUrl, startCallbackServer, REDIRECT_URI } = require('./services/google/auth.cjs');
+      
+      // Start the localhost callback server
+      await startCallbackServer();
+      console.log('Callback server started');
+      
+      const authUrl = await getAuthUrl();
+      console.log('Auth URL generated:', authUrl.substring(0, 50) + '...');
+      
+      return {
+        success: true,
+        authUrl,
+        redirectUri: REDIRECT_URI
+      };
+    } catch (err) {
+      console.error('AUTH ERROR:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * IPC Handler: auth:handle-oauth-callback
+   * Process OAuth callback with authorization code
+   */
+  ipcMain.handle('auth:oauth-callback', async (event, code) => {
+    try {
+      const { handleAuthCallback, stopCallbackServer } = require('./services/google/auth.cjs');
+      await handleAuthCallback(code);
+      
+      // Stop the callback server after successful auth
+      stopCallbackServer();
+      
+      return {
+        success: true,
+        message: 'Authentication successful'
+      };
+    } catch (err) {
+      console.error('OAuth callback error:', err);
+      return { success: false, error: err.message };
+    }
+  });
+
+  /**
+   * IPC Handler: auth:google-login
+   * Initiate Google OAuth flow
+   */
+  ipcMain.handle('auth:google-login', async (event) => {
+    try {
+      const { authorize } = require('./services/google/auth.cjs');
+      const auth = await authorize();
+      return {
+        success: true,
+        message: 'Google authentication successful'
+      };
+    } catch (err) {
+      console.error('Google auth error:', err);
+      return { success: false, error: err.message || String(err) };
+    }
+  });
+
   console.log('IPC handlers registered successfully');
+  
 }
 
 module.exports = {
