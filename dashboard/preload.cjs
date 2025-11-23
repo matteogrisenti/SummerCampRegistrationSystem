@@ -113,6 +113,12 @@ const api = {
    */
   onOAuthError: (callback) =>
     ipcRenderer.on('oauth-error', (event, error) => callback(error)),
+
+  // Camp methods
+  listCamps: () => ipcRenderer.invoke('camp:list'),
+  getCamp: (slug) => ipcRenderer.invoke('camp:get', slug),
+  updateCamp: (slug, updates) => ipcRenderer.invoke('camp:update', slug, updates),
+  deleteCamp: (slug) => ipcRenderer.invoke('camp:delete', slug),
 };
 
 /**
@@ -120,6 +126,7 @@ const api = {
  * This is the ONLY bridge between renderer and main process
  */
 contextBridge.exposeInMainWorld('electronApi', api);
+
 
 console.log('Preload script loaded - API exposed to renderer');
 

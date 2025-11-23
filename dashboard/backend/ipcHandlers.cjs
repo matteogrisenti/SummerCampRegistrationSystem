@@ -281,3 +281,123 @@ function registerIpcHandlers() {
 module.exports = {
   registerIpcHandlers,
 };
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+// IPC Handlers for Camp Management
+/////////////////////////////////////////////////////////////////////////////////////////////////////
+// Path to camps.json (adjust based on your project structure)
+const campsJsonPath = path.join(__dirname, './data/camps.json');
+if (!fs.existsSync(campsJsonPath)) {
+  throw new Error('camps.json not found', campsJsonPath);
+}
+
+/**
+ * IPC Handler: camp:list
+ * Get list of all camps from camps.json
+ */
+ipcMain.handle('camp:list', async (event) => {
+  try {
+    const fs = require('fs');
+    
+    // Check if file exists
+    if (!fs.existsSync(campsJsonPath)) {
+      console.log('camps.json not found, returning empty array');
+      return {
+        success: true,
+        data: []
+      };
+    }
+    
+    // Read and parse camps.json
+    const campsData = fs.readFileSync(campsJsonPath, 'utf8');
+    const camps = JSON.parse(campsData);
+    
+    console.log('Loaded camps:', camps.length);
+    return {
+      success: true,
+      data: camps
+    };
+  } catch (err) {
+    console.error('Error reading camps.json:', err);
+    return {
+      success: false,
+      error: err.message,
+      data: []
+    };
+  }
+});
+
+/**
+ * IPC Handler: camp:get
+ * Get a specific camp by slug
+ */
+ipcMain.handle('camp:get', async (event, campSlug) => {
+  try {
+    const fs = require('fs');
+    
+    if (!fs.existsSync(campsJsonPath)) {
+      throw new Error('camps.json not found');
+    }
+    
+    const campsData = fs.readFileSync(campsJsonPath, 'utf8');
+    const camps = JSON.parse(campsData);
+    
+    const camp = camps.find(c => c.camp_slug === campSlug);
+    
+    if (!camp) {
+      throw new Error(`Camp not found: ${campSlug}`);
+    }
+    
+    console.log('Found camp:', camp.camp_name);
+    return {
+      success: true,
+      data: camp
+    };
+  } catch (err) {
+    console.error('Error getting camp:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});
+
+/**
+ * IPC Handler: camp:delete
+ * Delete a camp from camps.json
+ */
+ipcMain.handle('camp:delete', async (event, campSlug) => {
+  try {
+    const fs = require('fs');
+    
+    if (!fs.existsSync(campsJsonPath)) {
+      throw new Error('camps.json not found');
+    }
+    
+    // Read current camps
+    const campsData = fs.readFileSync(campsJsonPath, 'utf8');
+    const camps = JSON.parse(campsData);
+    
+    // Filter out the camp to delete
+    const filteredCamps = camps.filter(c => c.camp_slug !== campSlug);
+    
+    if (filteredCamps.length === camps.length) {
+      throw new Error(`Camp not found: ${campSlug}`);
+    }
+    
+    // Write back to file
+    fs.writeFileSync(campsJsonPath, JSON.stringify(filteredCamps, null, 2), 'utf8');
+    
+    return {
+      success: true,
+      message: 'Camp deleted successfully'
+    };
+  } catch (err) {
+    console.error('Error deleting camp:', err);
+    return {
+      success: false,
+      error: err.message
+    };
+  }
+});

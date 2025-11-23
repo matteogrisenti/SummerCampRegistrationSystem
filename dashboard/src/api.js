@@ -319,6 +319,83 @@ export const api = {
     }
   },
 
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  // Camp methods
+  //////////////////////////////////////////////////////////////////////////////////////////////////
+  async listCamps() {
+    try {
+      const result = await window.electronApi.listCamps()
+      return result
+    } catch (error) {
+      console.error('Error listing camps:', error)
+      return { success: false, error: error.message, data: [] }
+    }
+  },
+  
+  async getCamp(campSlug) {
+    try {
+      if (window.electronApi?.invoke) {
+        return await window.electronApi.invoke('camp:get', campSlug)
+      }
+    } catch (error) {
+      console.error('Error getting camp:', error)
+      return { success: false, error: error.message }
+    }
+  },
+  
+  async createCamp(campName, options = {}) {
+    try {
+      if (window.electronApi?.invoke) {
+        return await window.electronApi.invoke('camp:create', { campName, options })
+      }
+      
+      const response = await fetch('/api/camps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campName, ...options })
+      })
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating camp:', error)
+      return { success: false, error: error.message }
+    }
+  },
+  
+  async updateCamp(campSlug, updates) {
+    try {
+      if (window.electronApi?.invoke) {
+        return await window.electronApi.invoke('camp:update', campSlug, updates)
+      }
+      
+      const response = await fetch(`/api/camps/${campSlug}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      })
+      return await response.json()
+    } catch (error) {
+      console.error('Error updating camp:', error)
+      return { success: false, error: error.message }
+    }
+  },
+  
+  async deleteCamp(campSlug) {
+    try {
+      if (window.electronApi?.invoke) {
+        return await window.electronApi.invoke('camp:delete', campSlug)
+      }
+      
+      const response = await fetch(`/api/camps/${campSlug}`, {
+        method: 'DELETE'
+      })
+      return await response.json()
+    } catch (error) {
+      console.error('Error deleting camp:', error)
+      return { success: false, error: error.message }
+    }
+  },
+
+
   /**
    * Quit the application
    */
