@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom';
 import { Trash2 } from 'lucide-react';
 import { api } from '../../../api'
 import AddCampButton from './AddCampButton'
 import './CampsGrid.css'
 
 export default function CampsGrid() {
+  const navigate = useNavigate(); // Add this hook
   const [camps, setCamps] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -67,8 +69,8 @@ export default function CampsGrid() {
       return;
     }
 
-    console.log('Clicked camp:', camp)
-    alert(`Opening details for: ${camp.camp_name}`)
+    // Otherwise, proceed to navigate to camp details page
+    navigate(`/camps/${camp.camp_slug}`);
   }
 
   const handleDeleteCamp = async (camp_slug, e) => {

@@ -59,58 +59,6 @@ export const api = {
    * ----------------------------------------------------------------------------------------------- */
 
   /**
-   * Process an uploaded file.
-   * @param {File} file
-   */
-  async processFile(file) {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron for file processing');
-    }
-
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const result = await window.electronApi.processFile(arrayBuffer, file.name);
-
-      if (!result.success) throw new Error(result.message || 'Failed to process file');
-
-      return {
-        success: true,
-        data: result.data,
-        filePath: result.filePath,
-        message: result.message
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: `Error processing file: ${error.message}`
-      };
-    }
-  },
-
-  /**
-   * Process a file already on disk.
-   * @param {string} filePath
-   */
-  async processFileRaw(filePath) {
-    if (!isElectron()) throw new Error('Application must run in Electron');
-
-    try {
-      const result = await window.electronApi.processFileRaw(filePath);
-
-      if (!result.success) throw new Error(result.message || 'Failed to process file');
-
-      return result;
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: `Error processing file: ${error.message}`
-      };
-    }
-  },
-
-  /**
    * Read a file from disk.
    * @param {string} filePath
    */
@@ -295,5 +243,16 @@ export const api = {
       console.error('Error deleting camp:', error);
       return { success: false, error: error.message };
     }
-  }
+  },
+
+  async processCampRegistrations(campSlug) {
+    try {
+      return await window.electronApi.processCampRegistrations(campSlug);
+    } catch (error) {
+      console.error('Error processing camp registrations:', error);
+      return { success: false, error: error.message };
+    }
+  },
+
+  
 };

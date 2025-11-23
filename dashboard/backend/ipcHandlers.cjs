@@ -6,71 +6,12 @@
 const { ipcMain, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const processor = require('./modules/processor.cjs');
+
 
 /**
  * Register all IPC handlers
  */
 function registerIpcHandlers() {
-  /**
-   * IPC Handler: process-file
-   * Processes an uploaded file through the complete pipeline
-   */
-  ipcMain.handle('process-file', async (event, fileBuffer, fileName) => {
-    try {
-      // Save buffer to temporary file
-      const tempDir = require('os').tmpdir();
-      const tempFilePath = path.join(tempDir, fileName);
-
-      fs.writeFileSync(tempFilePath, Buffer.from(fileBuffer));
-
-      // Process the file
-      const results = await processor.processRegistrations(tempFilePath, tempFilePath);
-
-      // Return results and temp file path
-      return {
-        success: true,
-        data: results,
-        filePath: tempFilePath,
-        message: 'File processed successfully'
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: `Error processing file: ${error.message}`
-      };
-    }
-  });
-
-  /**
-   * IPC Handler: process-file-raw
-   * Process a file that already exists on disk
-   */
-  ipcMain.handle('process-file-raw', async (event, filePath) => {
-    try {
-      if (!fs.existsSync(filePath)) {
-        throw new Error(`File not found: ${filePath}`);
-      }
-
-      const results = await processor.processRegistrations(filePath, filePath);
-
-      return {
-        success: true,
-        data: results,
-        filePath,
-        message: 'File processed successfully'
-      };
-
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: `Error processing file: ${error.message}`
-      };
-    }
-  });
 
   /**
    * IPC Handler: show-open-dialog
@@ -381,6 +322,56 @@ ipcMain.handle('camp:delete', async (event, campSlug) => {
     return {
       success: false,
       error: err.message
+    };
+  }
+});
+
+/**
+ * camp:process
+ * Process registration data for a camp
+ */
+const { processRegistrations } = require('./camp/registrationProcessor.cjs');
+ipcMain.handle('camp:process', async (event, slug) => {
+  try {
+    const fs = require('fs');
+    
+    if (!fs.existsSync(campsJsonPath)) {
+      return {
+        success: false,
+        error: `Camp not found: ${slug}`
+      };
+    }
+    
+    const campsData = fs.readFileSync(campsJsonPath, 'utf8');
+    const camps = JSON.parse(campsData);
+    
+    const camp = camps.find(c => c.camp_slug === slug);
+    
+    if (!camp) {
+      return {
+        success: false,
+        error: `Camp not found: ${slug}`
+      };
+    }
+
+    // Check if Excel file exists
+    if (!fs.existsSync(camp.xlsx_path)) {
+      return {
+        success: false,
+        error: 'Registration file not found'
+      };
+    }
+    
+    // Process the registrations
+    const result = await processRegistrations(slug, camp.xlsx_path, camp.sheet_id);
+    
+    return result;
+    
+  } catch (error) {
+    console.error('Processing handler error:', error);
+    return {
+      success: false,
+      error: error.message
     };
   }
 });

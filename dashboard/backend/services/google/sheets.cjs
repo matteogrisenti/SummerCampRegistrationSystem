@@ -1,4 +1,5 @@
 // backend/services/google/sheets.js
+const XLSX = require('xlsx');
 const { google } = require('googleapis');
 
 async function createSheet(auth, title) {
@@ -19,6 +20,27 @@ async function createSheet(auth, title) {
   return { sheetId, sheetUrl };
 }
 
+async function downloadSheetAsExcel(auth, sheetId, destPath) {
+  const sheets = google.sheets({ version: 'v4', auth });
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: sheetId,
+    includeGridData: true
+  });
+  const workbook = XLSX.utils.book_new();
+
+  registration_sheet = res.data.sheets[0];
+  
+  const sheetTitle = registration_sheet.properties.title;
+  const rows = registration_sheet.data[0].rowData.map(row => {
+    return row.values ? row.values.map(cell => cell.formattedValue || '') : [];
+  });
+
+  const worksheet = XLSX.utils.aoa_to_sheet(rows);
+  XLSX.utils.book_append_sheet(workbook, worksheet, sheetTitle);
+  
+  XLSX.writeFile(workbook, destPath); 
+}
+
 async function setSheetHeaders(auth, sheetId, headers) {
   const sheets = google.sheets({ version: 'v4', auth });
   const values = [headers];
@@ -30,4 +52,4 @@ async function setSheetHeaders(auth, sheetId, headers) {
   });
 }
 
-module.exports = { createSheet, setSheetHeaders };
+module.exports = { createSheet, setSheetHeaders, downloadSheetAsExcel };

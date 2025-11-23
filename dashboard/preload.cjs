@@ -11,30 +11,6 @@ const { contextBridge, ipcRenderer } = require('electron');
  */
 const api = {
   /**
-   * Process an uploaded file
-   * @param {ArrayBuffer} fileBuffer - File data
-   * @param {string} fileName - File name
-   * @returns {Promise<Object>} Processing results
-   */
-  processFile: (fileBuffer, fileName) =>
-    ipcRenderer.invoke('process-file', fileBuffer, fileName),
-
-  /**
-   * Process a file that already exists on disk
-   * @param {string} filePath - Path to file
-   * @returns {Promise<Object>} Processing results
-   */
-  processFileRaw: (filePath) =>
-    ipcRenderer.invoke('process-file-raw', filePath),
-
-  /**
-   * Show file open dialog
-   * @returns {Promise<Object>} Dialog result
-   */
-  showOpenDialog: () =>
-    ipcRenderer.invoke('show-open-dialog'),
-
-  /**
    * Show file save dialog
    * @param {string} defaultFileName - Default file name
    * @returns {Promise<Object>} Dialog result
@@ -119,6 +95,7 @@ const api = {
   getCamp: (slug) => ipcRenderer.invoke('camp:get', slug),
   updateCamp: (slug, updates) => ipcRenderer.invoke('camp:update', slug, updates),
   deleteCamp: (slug) => ipcRenderer.invoke('camp:delete', slug),
+  processCampRegistrations: (slug) => ipcRenderer.invoke('camp:process', slug),
 };
 
 /**
