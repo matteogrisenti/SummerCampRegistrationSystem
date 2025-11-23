@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Trash2 } from 'lucide-react';
 import { api } from '../../../api'
 import AddCampButton from './AddCampButton'
 import './CampsGrid.css'
@@ -57,15 +58,35 @@ export default function CampsGrid() {
     }
   }
 
-  const handleCampClick = (camp) => {
+  const handleCampClick = (camp, e) => {
+    // Check if the user clicked on the delete button (or the icon inside it)
+    console.log(e.target)
+    if (e.target.closest('.delete-camp-button')) {
+      // If yes, call the delete logic and STOP here.
+      handleDeleteCamp(camp.camp_slug);
+      return;
+    }
+
     console.log('Clicked camp:', camp)
     alert(`Opening details for: ${camp.camp_name}`)
   }
 
-  const handleAddCamp = () => {
-    console.log('Add camp clicked')
-    // This will be implemented when you have the add camp functionality
+  const handleDeleteCamp = async (camp_slug, e) => {
+    if (!confirm("Are you sure you want to delete this camp?")) return
+    
+    try {
+      const result = await api.deleteCamp(camp_slug)
+      if (result.success) {
+        setCamps(camps.filter(c => c.camp_slug !== camp_slug))
+      } else {
+        alert("Failed to delete camp")
+      }
+    } catch (err) {
+      console.error(err)
+      alert("Error deleting camp")
+    }
   }
+
 
   if (loading) {
     return (
@@ -96,11 +117,11 @@ export default function CampsGrid() {
         <h3>No Camps Yet</h3>
         <p>Create your first camp to get started!</p>
         
-        <AddCampButton onClick={handleAddCamp} />
+        <AddCampButton/>
       </div>
     )
   }
-
+  
   return (
     <div className="camps-grid-container">
       <div className="camps-header">
@@ -110,7 +131,7 @@ export default function CampsGrid() {
             <p className="camps-count">{camps.length} camp{camps.length !== 1 ? 's' : ''} available</p>
           </div>
           <div className="camps-header-right">
-            <AddCampButton onClick={handleAddCamp} />
+            <AddCampButton/>
           </div>
         </div>
       </div>
@@ -120,13 +141,14 @@ export default function CampsGrid() {
           <div 
             key={camp.camp_slug} 
             className="camp-card"
-            onClick={() => handleCampClick(camp)}
+            onClick={(e) => handleCampClick(camp, e)}
           >
             <div className="camp-card-header">
               <h3 className="camp-name">{camp.camp_name}</h3>
-              {!(camp.start_date && camp.end_date) && (
-                <span className="warning-badge" title="Period not set">⚠️</span>
-              )}
+
+              <button className="delete-camp-button">
+                <Trash2 size={18} />
+              </button>
             </div>
             
             <div className="camp-period">

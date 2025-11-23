@@ -367,27 +367,10 @@ ipcMain.handle('camp:get', async (event, campSlug) => {
  * IPC Handler: camp:delete
  * Delete a camp from camps.json
  */
+const { deleteCamp } = require('./camp/deleteCamp.cjs');
 ipcMain.handle('camp:delete', async (event, campSlug) => {
   try {
-    const fs = require('fs');
-    
-    if (!fs.existsSync(campsJsonPath)) {
-      throw new Error('camps.json not found');
-    }
-    
-    // Read current camps
-    const campsData = fs.readFileSync(campsJsonPath, 'utf8');
-    const camps = JSON.parse(campsData);
-    
-    // Filter out the camp to delete
-    const filteredCamps = camps.filter(c => c.camp_slug !== campSlug);
-    
-    if (filteredCamps.length === camps.length) {
-      throw new Error(`Camp not found: ${campSlug}`);
-    }
-    
-    // Write back to file
-    fs.writeFileSync(campsJsonPath, JSON.stringify(filteredCamps, null, 2), 'utf8');
+    deleteCamp(campSlug);
     
     return {
       success: true,

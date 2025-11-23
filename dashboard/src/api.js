@@ -264,10 +264,27 @@ export const api = {
 
   async createCamp(campName, options = {}) {
     try {
-      return await window.electronApi.createCamp(campName, options);
+      const result = await window.electronApi.createCamp({
+        campName,
+        options
+      });
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create camp');
+      }
+
+      return {
+        success: true,
+        data: result.data,
+        message: 'Camp created successfully'
+      };
     } catch (error) {
       console.error('Error creating camp:', error);
-      return { success: false, error: error.message };
+      return {
+        success: false,
+        error: error.message,
+        message: `Error creating camp: ${error.message}`
+      };
     }
   },
 

@@ -268,6 +268,24 @@
   font-size: 16px;
 }
 
+.delete-camp-button {
+  background: white;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  color: #d9534f;
+  padding: 4px;
+  transition: 0.2s;
+  pointer-events: auto;
+  z-index: 9999 !important;
+}
+
+.delete-camp-button:hover {
+  color: #b52b27;
+}
+
+
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .camps-grid {
