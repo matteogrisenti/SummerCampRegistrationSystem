@@ -11,6 +11,22 @@
   padding-bottom: 20px;
 }
 
+.camps-header-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.camps-header-left {
+  flex: 1;
+}
+
+.camps-header-right {
+  display: flex;
+  align-items: center;
+}
+
 .camps-header h2 {
   margin: 0 0 8px 0;
   font-size: 28px;
@@ -247,7 +263,7 @@
 }
 
 .camps-empty p {
-  margin: 0;
+  margin: 0 0 30px 0;
   color: #7f8c8d;
   font-size: 16px;
 }
@@ -260,6 +276,15 @@
   
   .camps-grid-container {
     padding: 20px;
+  }
+  
+  .camps-header-content {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .camps-header-right {
+    width: 100%;
   }
   
   .camp-card-footer {

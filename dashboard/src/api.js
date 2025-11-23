@@ -1,169 +1,31 @@
 /**
- * API client for communicating with backend via IPC
- * No HTTP requests - everything runs locally in Electron
+ * API client to communicate with the Electron main process via IPC.
+ * When running outside Electron, uses a mock API.
+ *
+ * No HTTP requests are used when running in Electron.
  */
 
-/**
- * Check if we're running in Electron
- */
-const isElectron = () => {
-  return typeof window !== 'undefined' && typeof window.electronApi !== 'undefined';
-};
+/* -------------------------------------------------------------------------------------------------
+ * Helpers
+ * ------------------------------------------------------------------------------------------------- */
 
 /**
- * Mock API for testing when electronApi is not available
+ * Detect if the app is running inside Electron.
  */
-const mockApi = {
-  processFile: async () => ({
-    success: false,
-    message: 'electronApi not available - try reloading'
-  }),
-  processFileRaw: async () => ({
-    success: false,
-    message: 'electronApi not available'
-  }),
-  showOpenDialog: async () => ({ success: false }),
-  showSaveDialog: async () => ({ success: false }),
-  readFile: async () => ({ success: false }),
-  getAppInfo: async () => ({ mode: 'unknown' }),
-  quit: () => console.log('Would quit')
-};
+const isElectron = () =>
+  typeof window !== 'undefined' && typeof window.electronApi !== 'undefined';
 
-/**
- * API client using IPC bridge
- */
+
+
+/* -------------------------------------------------------------------------------------------------
+ * API Client
+ * ------------------------------------------------------------------------------------------------- */
+
 export const api = {
-  /**
-   * Process an uploaded file
-   * @param {File} file - The Excel file to upload
-   * @returns {Promise<Object>} Processing results
-   */
-  async processFile(file) {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron for file processing');
-    }
+  /* -----------------------------------------------------------------------------------------------
+   * General Utilities
+   * ----------------------------------------------------------------------------------------------- */
 
-    try {
-      // Convert File to ArrayBuffer
-      const arrayBuffer = await file.arrayBuffer();
-
-      // Send to main process via IPC
-      const result = await window.electronApi.processFile(arrayBuffer, file.name);
-
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to process file');
-      }
-
-      return {
-        success: true,
-        data: result.data,
-        filePath: result.filePath,
-        message: result.message
-      };
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: `Error processing file: ${error.message}`
-      };
-    }
-  },
-
-  /**
-   * Process a file that already exists on disk
-   * @param {string} filePath - Path to the file on disk
-   * @returns {Promise<Object>} Processing results
-   */
-  async processFileRaw(filePath) {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron');
-    }
-
-    try {
-      const result = await window.electronApi.processFileRaw(filePath);
-
-      if (!result.success) {
-        throw new Error(result.message || 'Failed to process file');
-      }
-
-      return result;
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        message: `Error processing file: ${error.message}`
-      };
-    }
-  },
-
-  /**
-   * Show file open dialog
-   * @returns {Promise<string|null>} Selected file path or null
-   */
-  async showOpenDialog() {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron');
-    }
-
-    try {
-      const result = await window.electronApi.showOpenDialog();
-      return result.success ? result.filePath : null;
-    } catch (error) {
-      console.error('Error opening file dialog:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Show file save dialog
-   * @param {string} defaultFileName - Default file name
-   * @returns {Promise<string|null>} Save path or null
-   */
-  async showSaveDialog(defaultFileName) {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron');
-    }
-
-    try {
-      const result = await window.electronApi.showSaveDialog(defaultFileName);
-      return result.success ? result.filePath : null;
-    } catch (error) {
-      console.error('Error opening save dialog:', error);
-      return null;
-    }
-  },
-
-  /**
-   * Read a file from disk
-   * @param {string} filePath - Path to file
-   * @returns {Promise<{buffer: ArrayBuffer, fileName: string}>} File data
-   */
-  async readFile(filePath) {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron');
-    }
-
-    try {
-      const result = await window.electronApi.readFile(filePath);
-
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to read file');
-      }
-
-      return {
-        buffer: new Uint8Array(result.buffer).buffer,
-        fileName: result.fileName
-      };
-    } catch (error) {
-      console.error('Error reading file:', error);
-      throw error;
-    }
-  },
-
-  /**
-   * Get application info
-   * @returns {Promise<Object>} App information
-   */
   async getAppInfo() {
     if (!isElectron()) {
       return {
@@ -181,54 +43,131 @@ export const api = {
     }
   },
 
-  /**
-   * Check backend health (always returns true since no backend server)
-   * @returns {Promise<boolean>} Always true in local mode
-   */
   async checkHealth() {
     return isElectron();
   },
 
+  quit() {
+    if (isElectron()) window.electronApi.quit();
+  },
+
+
+
+
+  /* -----------------------------------------------------------------------------------------------
+   * File Processing
+   * ----------------------------------------------------------------------------------------------- */
+
   /**
-   * Create a new camp with Google Form and Sheet
-   * @param {string} campName - Name of the camp
-   * @param {Object} options - Additional options
-   * @returns {Promise<Object>} Camp metadata with form and sheet URLs
+   * Process an uploaded file.
+   * @param {File} file
    */
-  async createCamp(campName, options = {}) {
+  async processFile(file) {
     if (!isElectron()) {
-      throw new Error('Application must run in Electron for camp creation');
+      throw new Error('Application must run in Electron for file processing');
     }
 
     try {
-      const result = await window.electronApi.createCamp({
-        campName,
-        options
-      });
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await window.electronApi.processFile(arrayBuffer, file.name);
 
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create camp');
-      }
+      if (!result.success) throw new Error(result.message || 'Failed to process file');
 
       return {
         success: true,
         data: result.data,
-        message: 'Camp created successfully'
+        filePath: result.filePath,
+        message: result.message
       };
     } catch (error) {
-      console.error('Error creating camp:', error);
       return {
         success: false,
         error: error.message,
-        message: `Error creating camp: ${error.message}`
+        message: `Error processing file: ${error.message}`
       };
     }
   },
 
   /**
-   * Check if Google authentication is configured
-   * @returns {Promise<Object>} Auth status
+   * Process a file already on disk.
+   * @param {string} filePath
    */
+  async processFileRaw(filePath) {
+    if (!isElectron()) throw new Error('Application must run in Electron');
+
+    try {
+      const result = await window.electronApi.processFileRaw(filePath);
+
+      if (!result.success) throw new Error(result.message || 'Failed to process file');
+
+      return result;
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        message: `Error processing file: ${error.message}`
+      };
+    }
+  },
+
+  /**
+   * Read a file from disk.
+   * @param {string} filePath
+   */
+  async readFile(filePath) {
+    if (!isElectron()) throw new Error('Application must run in Electron');
+
+    try {
+      const result = await window.electronApi.readFile(filePath);
+
+      if (!result.success) throw new Error(result.error || 'Failed to read file');
+
+      return {
+        buffer: new Uint8Array(result.buffer).buffer,
+        fileName: result.fileName
+      };
+    } catch (error) {
+      console.error('Error reading file:', error);
+      throw error;
+    }
+  },
+
+
+  /* -----------------------------------------------------------------------------------------------
+   * File Dialogs
+   * ----------------------------------------------------------------------------------------------- */
+
+  async showOpenDialog() {
+    if (!isElectron()) throw new Error('Application must run in Electron');
+
+    try {
+      const result = await window.electronApi.showOpenDialog();
+      return result.success ? result.filePath : null;
+    } catch (error) {
+      console.error('Error opening file dialog:', error);
+      return null;
+    }
+  },
+
+  async showSaveDialog(defaultFileName) {
+    if (!isElectron()) throw new Error('Application must run in Electron');
+
+    try {
+      const result = await window.electronApi.showSaveDialog(defaultFileName);
+      return result.success ? result.filePath : null;
+    } catch (error) {
+      console.error('Error opening save dialog:', error);
+      return null;
+    }
+  },
+
+
+
+
+  /* -----------------------------------------------------------------------------------------------
+   * Google OAuth
+   * ----------------------------------------------------------------------------------------------- */
+
   async checkGoogleAuth() {
     if (!isElectron()) {
       return { success: false, hasCredentials: false, hasToken: false };
@@ -242,20 +181,14 @@ export const api = {
     }
   },
 
-  /**
-   * Get Google OAuth login URL
-   * @returns {Promise<string>} Login URL
-   */
   async getGoogleLoginUrl() {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron');
-    }
+    if (!isElectron()) throw new Error('Application must run in Electron');
 
     try {
       const result = await window.electronApi.getGoogleLoginUrl();
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to get login URL');
-      }
+
+      if (!result.success) throw new Error(result.error || 'Failed to get login URL');
+
       return result.authUrl;
     } catch (error) {
       console.error('Error getting Google login URL:', error);
@@ -263,21 +196,14 @@ export const api = {
     }
   },
 
-  /**
-   * Handle OAuth callback with authorization code
-   * @param {string} code - Authorization code
-   * @returns {Promise<Object>} Result
-   */
   async handleOAuthCallback(code) {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron');
-    }
+    if (!isElectron()) throw new Error('Application must run in Electron');
 
     try {
       const result = await window.electronApi.handleOAuthCallback(code);
-      if (!result.success) {
-        throw new Error(result.error || 'OAuth callback failed');
-      }
+
+      if (!result.success) throw new Error(result.error || 'OAuth callback failed');
+
       return { success: true, message: result.message };
     } catch (error) {
       console.error('Error handling OAuth callback:', error);
@@ -289,21 +215,13 @@ export const api = {
     }
   },
 
-  /**
-   * Perform Google OAuth login
-   * @returns {Promise<Object>} Login result
-   */
   async googleLogin() {
-    if (!isElectron()) {
-      throw new Error('Application must run in Electron for Google login');
-    }
+    if (!isElectron()) throw new Error('Application must run in Electron');
 
     try {
       const result = await window.electronApi.googleLogin();
 
-      if (!result.success) {
-        throw new Error(result.error || 'Google login failed');
-      }
+      if (!result.success) throw new Error(result.error || 'Google login failed');
 
       return {
         success: true,
@@ -319,89 +237,46 @@ export const api = {
     }
   },
 
-  //////////////////////////////////////////////////////////////////////////////////////////////////
-  // Camp methods
-  //////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+  /* -----------------------------------------------------------------------------------------------
+   * Camps
+   * ----------------------------------------------------------------------------------------------- */
+
   async listCamps() {
     try {
-      const result = await window.electronApi.listCamps()
-      return result
+      return await window.electronApi.listCamps();
     } catch (error) {
-      console.error('Error listing camps:', error)
-      return { success: false, error: error.message, data: [] }
+      console.error('Error listing camps:', error);
+      return { success: false, error: error.message, data: [] };
     }
   },
-  
+
   async getCamp(campSlug) {
     try {
-      if (window.electronApi?.invoke) {
-        return await window.electronApi.invoke('camp:get', campSlug)
-      }
+      return await window.electronApi.getCamp(campSlug);
     } catch (error) {
-      console.error('Error getting camp:', error)
-      return { success: false, error: error.message }
+      console.error('Error getting camp:', error);
+      return { success: false, error: error.message };
     }
   },
-  
+
   async createCamp(campName, options = {}) {
     try {
-      if (window.electronApi?.invoke) {
-        return await window.electronApi.invoke('camp:create', { campName, options })
-      }
-      
-      const response = await fetch('/api/camps', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ campName, ...options })
-      })
-      return await response.json()
+      return await window.electronApi.createCamp(campName, options);
     } catch (error) {
-      console.error('Error creating camp:', error)
-      return { success: false, error: error.message }
+      console.error('Error creating camp:', error);
+      return { success: false, error: error.message };
     }
   },
-  
-  async updateCamp(campSlug, updates) {
-    try {
-      if (window.electronApi?.invoke) {
-        return await window.electronApi.invoke('camp:update', campSlug, updates)
-      }
-      
-      const response = await fetch(`/api/camps/${campSlug}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updates)
-      })
-      return await response.json()
-    } catch (error) {
-      console.error('Error updating camp:', error)
-      return { success: false, error: error.message }
-    }
-  },
-  
+
   async deleteCamp(campSlug) {
     try {
-      if (window.electronApi?.invoke) {
-        return await window.electronApi.invoke('camp:delete', campSlug)
-      }
-      
-      const response = await fetch(`/api/camps/${campSlug}`, {
-        method: 'DELETE'
-      })
-      return await response.json()
+      return await window.electronApi.deleteCamp(campSlug);
     } catch (error) {
-      console.error('Error deleting camp:', error)
-      return { success: false, error: error.message }
-    }
-  },
-
-
-  /**
-   * Quit the application
-   */
-  quit() {
-    if (isElectron()) {
-      window.electronApi.quit();
+      console.error('Error deleting camp:', error);
+      return { success: false, error: error.message };
     }
   }
 };
