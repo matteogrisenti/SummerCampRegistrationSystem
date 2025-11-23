@@ -160,14 +160,6 @@ export default function CampsGrid() {
             
             <div className="camp-card-footer">
               <div className="camp-stats">
-                <div className="stat-item">
-                  <span className="stat-icon">📋</span>
-                  <span className="stat-label">Form</span>
-                </div>
-                <div className="stat-item">
-                  <span className="stat-icon">📊</span>
-                  <span className="stat-label">Sheet</span>
-                </div>
               </div>
               
               <div className="camp-card-action">
