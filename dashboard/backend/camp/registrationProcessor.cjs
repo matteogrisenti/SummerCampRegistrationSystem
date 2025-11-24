@@ -26,7 +26,10 @@ async function processRegistrations(campSlug, xlsxPath, sheetId) {
     
     // Validate and categorize registrations
     const { validRegistrations, invalidRegistrations } = validateRegistrations(registrations);
-    
+
+    // Identify duplicated registrations
+    const duplicateRegistrations = identifyDuplicateRegistrations(validRegistrations);
+
     // Identify possible sibling groups
     const siblingGroups = identifySiblingGroups(validRegistrations);
     
@@ -34,6 +37,8 @@ async function processRegistrations(campSlug, xlsxPath, sheetId) {
     const results = {
       validRegistrations,
       invalidRegistrations,
+      duplicateRegistrations,
+      duplicateCount: duplicateRegistrations.length,
       siblingGroups,
       validCount: validRegistrations.length,
       invalidCount: invalidRegistrations.length,
@@ -146,6 +151,59 @@ function validateRegistrations(registrations) {
   return { validRegistrations, invalidRegistrations };
 }
 
+
+/**
+ * Identify duplicate registrations
+ * A duplicate is defined as having:
+ *  - same child full name
+ *  - same parent full name
+ *  - same phone number
+ */
+function identifyDuplicateRegistrations(validRegistrations) {
+  const seen = new Map();
+  const duplicates = [];
+
+  validRegistrations.forEach(reg => {
+    // Identify sensible likely column names
+    const childNameKey = Object.keys(reg).find(k =>
+      k.toLowerCase().includes("nome") && k.toLowerCase().includes("bambino")
+    );
+
+    const parentNameKey = Object.keys(reg).find(k =>
+      k.toLowerCase().includes("parent") ||
+      k.toLowerCase().includes("genitore")
+    );
+
+    const phoneKey = Object.keys(reg).find(k =>
+      k.toLowerCase().includes("telefono") ||
+      k.toLowerCase().includes("phone")
+    );
+
+    if (!childNameKey || !parentNameKey || !phoneKey) return;
+
+    const child = reg[childNameKey]?.toString().trim().toLowerCase();
+    const parent = reg[parentNameKey]?.toString().trim().toLowerCase();
+    const phone = reg[phoneKey]?.toString().trim();
+
+    if (!child || !parent || !phone) return;
+
+    const key = `${child}__${parent}__${phone}`;
+
+    if (seen.has(key)) {
+      duplicates.push({
+        ...reg,
+        _rowNumber: reg._rowNumber,
+        _duplicateOf: seen.get(key)._rowNumber
+      });
+    } else {
+      seen.set(key, reg);
+    }
+  });
+
+  return duplicates;
+}
+
+
 /**
  * Identify possible sibling groups
  * Groups registrations by parent email/contact information
@@ -224,6 +282,12 @@ function writeResultsToExcel(filePath, results) {
       XLSX.utils.book_append_sheet(workbook, invalidSheet, 'Invalid_Registrations');
     }
 
+    // Add duplicate registrations sheet
+    if (results.duplicateRegistrations && results.duplicateRegistrations.length > 0) {
+      const dupSheet = XLSX.utils.json_to_sheet(results.duplicateRegistrations);
+      XLSX.utils.book_append_sheet(workbook, dupSheet, 'Duplicate_Registrations');
+    }
+
     // Add sibling groups sheet
     if (results.siblingGroups && results.siblingGroups.length > 0) {
       const siblingSheet = XLSX.utils.json_to_sheet(results.siblingGroups);
@@ -234,6 +298,7 @@ function writeResultsToExcel(filePath, results) {
     const summary = [{
       'Total Registrations': results.totalCount,
       'Valid Registrations': results.validCount,
+      'Duplicate Registrations': results.duplicateCount,
       'Invalid Registrations': results.invalidCount,
       'Sibling Groups': results.siblingGroupsCount,
       'Processed At': results.processedAt,

@@ -57,6 +57,7 @@
   font-size: 16px;
 }
 
+
 .camp-details-retry-button {
   padding: 12px 24px;
   background-color: #667eea;
@@ -435,6 +436,13 @@
 
 .stat-card-success .stat-card-value {
   color: #155724;
+}
+
+.stat-card-danger {
+  background-color: #ffe6e6;
+}
+.stat-card-danger .stat-card-value {
+  color: #721c24;
 }
 
 .stat-card-warning {

@@ -204,6 +204,15 @@ return (
                 </div>
               </div>
 
+              {/* Duplicated Registrations */}
+              <div className="camp-details-stat-card stat-card-danger">
+                <div className="stat-card-icon">📑</div>
+                <div className="stat-card-content">
+                  <div className="stat-card-value">{processingData.duplicateCount || 0}</div>
+                  <div className="stat-card-label">Duplicate Registrations</div>
+                </div>
+              </div>
+
               {/* Total Registrations */}
               <div className="camp-details-stat-card stat-card-primary">
                 <div className="stat-card-icon">📊</div>
