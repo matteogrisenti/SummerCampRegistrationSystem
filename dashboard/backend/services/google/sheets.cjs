@@ -20,6 +20,29 @@ async function createSheet(auth, title) {
   return { sheetId, sheetUrl };
 }
 
+async function readSheetAsExcel(auth, sheetId, pageId = 0, startRow = 0) {
+  const sheets = google.sheets({ version: 'v4', auth });
+
+  // Fetch the full spreadsheet data including grid data
+  const res = await sheets.spreadsheets.get({
+    spreadsheetId: sheetId,
+    includeGridData: true,
+  });
+
+  const registration_sheet = res.data.sheets[pageId];
+
+  if (!registration_sheet || !registration_sheet.data || !registration_sheet.data[0].rowData) {
+    return [];
+  }
+
+  // Extract rows starting from startRow
+  const rows = registration_sheet.data[0].rowData.slice(startRow - 1).map(row => {
+    return row.values ? row.values.map(cell => (cell.formattedValue || '')) : [];
+  });
+
+  return rows;
+}
+
 async function downloadSheetAsExcel(auth, sheetId, destPath) {
   const sheets = google.sheets({ version: 'v4', auth });
   const res = await sheets.spreadsheets.get({
@@ -39,6 +62,7 @@ async function downloadSheetAsExcel(auth, sheetId, destPath) {
   XLSX.utils.book_append_sheet(workbook, worksheet, sheetTitle);
   
   XLSX.writeFile(workbook, destPath); 
+  console.log(`[DOWNLOAD] Sheet downloaded as XLSX to ${destPath}`);
 }
 
 async function setSheetHeaders(auth, sheetId, headers) {
@@ -52,4 +76,4 @@ async function setSheetHeaders(auth, sheetId, headers) {
   });
 }
 
-module.exports = { createSheet, setSheetHeaders, downloadSheetAsExcel };
+module.exports = { createSheet, setSheetHeaders, downloadSheetAsExcel, readSheetAsExcel};

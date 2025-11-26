@@ -353,14 +353,6 @@ ipcMain.handle('camp:process', async (event, slug) => {
         error: `Camp not found: ${slug}`
       };
     }
-
-    // Check if Excel file exists
-    if (!fs.existsSync(camp.xlsx_path)) {
-      return {
-        success: false,
-        error: 'Registration file not found'
-      };
-    }
     
     // Process the registrations
     const result = await processRegistrations(slug, camp.xlsx_path, camp.sheet_id);

@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { google } = require('googleapis');
 
+// Export Google Sheet as Excel file
 async function exportSheetAsXlsx(auth, sheetId, outPath) {
   const drive = google.drive({ version: 'v3', auth });
 
@@ -23,6 +24,7 @@ async function exportSheetAsXlsx(auth, sheetId, outPath) {
       .pipe(dest);
   });
 
+  console.log(`[EXPORT] Sheet exported as XLSX to ${outPath}`);
   return outPath;
 }
 

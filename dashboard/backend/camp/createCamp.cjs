@@ -60,8 +60,7 @@ async function createCamp(campName, fields) {
   await setSheetHeaders(auth, sheetId, headers);
 
 
-  // 6) Export sheet to xlsx and save locally
-  const xlsxPath = path.join(dataDir, 'registrations.xlsx');
+  // 6) Export sheet to xlsx
   await exportSheetAsXlsx(auth, sheetId, xlsxPath);
 
 

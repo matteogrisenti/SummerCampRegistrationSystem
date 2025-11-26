@@ -2,13 +2,9 @@
  * Registration Data Processor
  * Processes Excel registration data, validates entries, and identifies sibling groups
  */
+const { syncRegistrations } = require('./utils/syncRegistrations.cjs');
+const { validateRegistrations, identifyDuplicateRegistrations, identifySiblingGroups} = require('./utils/utils.cjs');  
 
-const XLSX = require('xlsx');
-const path = require('path');
-const fs = require('fs');
-
-const { authorize } = require('../services/google/auth.cjs');
-const { downloadSheetAsExcel } = require('../services/google/sheets.cjs');
 
 /**
  * Main processing function
@@ -16,24 +12,19 @@ const { downloadSheetAsExcel } = require('../services/google/sheets.cjs');
  */
 async function processRegistrations(campSlug, xlsxPath, sheetId) {
   try {
-    // 1) Download the Registration Sheet as Excel
-    const auth = await authorize();
-    await downloadSheetAsExcel(auth, sheetId, xlsxPath);
+    // 1. Sync and merge registrations (download new, merge with old, save to file)
+    const { registrations, outputPath } = await syncRegistrations(campSlug, xlsxPath, sheetId);
 
-    // 2) Process the Excel file
-    // Read the Excel file
-    const registrations = readRegistrations(xlsxPath);
-    
-    // Validate and categorize registrations
+    // 2. Validate and categorize registrations
     const { validRegistrations, invalidRegistrations } = validateRegistrations(registrations);
 
-    // Identify duplicated registrations
+    // 3. Identify duplicated registrations
     const duplicateRegistrations = identifyDuplicateRegistrations(validRegistrations);
 
-    // Identify possible sibling groups
+    // 4. Identify possible sibling groups
     const siblingGroups = identifySiblingGroups(validRegistrations);
-    
-    // Prepare results
+
+    // 5. Prepare results object
     const results = {
       validRegistrations,
       invalidRegistrations,
@@ -46,11 +37,10 @@ async function processRegistrations(campSlug, xlsxPath, sheetId) {
       totalCount: registrations.length,
       processedAt: new Date().toISOString(),
     };
-    
-    // Write processed results to a new Excel file
-    const outputPath = path.join(path.dirname(xlsxPath), 'processed_registrations.xlsx');
-    writeResultsToExcel(outputPath, results);
-    
+
+    // Note: We no longer write the results to Excel here. 
+    // The "workable" file is managed by syncRegistrations.
+
     return {
       success: true,
       data: {
@@ -60,9 +50,11 @@ async function processRegistrations(campSlug, xlsxPath, sheetId) {
         totalCount: results.totalCount,
         processedAt: results.processedAt,
         outputPath,
+        // Return the full analysis results if needed by the caller
+        results
       }
     };
-    
+
   } catch (error) {
     console.error('Processing error:', error);
     return {
@@ -72,276 +64,6 @@ async function processRegistrations(campSlug, xlsxPath, sheetId) {
   }
 }
 
-/**
- * Read registrations from Excel file
- */
-function readRegistrations(filePath) {
-  try {
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`File not found: ${filePath}`);
-    }
-
-    const workbook = XLSX.readFile(filePath);
-    
-    // Get the first sheet (usually contains registrations)
-    const firstSheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[firstSheetName];
-    const data = XLSX.utils.sheet_to_json(sheet);
-
-    if (data.length === 0) {
-      throw new Error('Excel file contains no data');
-    }
-
-    return data;
-  } catch (error) {
-    throw new Error(`Failed to read Excel file: ${error.message}`);
-  }
-}
-
-/**
- * Validate registrations
- * Categorizes entries as valid or invalid based on required fields
- */
-function validateRegistrations(registrations) {
-  const validRegistrations = [];
-  const invalidRegistrations = [];
-  
-  // Required fields (adjust based on your form structure)
-  const requiredFields = [
-    'Timestamp',
-    // Add your actual required field names here
-  ];
-  
-  registrations.forEach((registration, index) => {
-    const errors = [];
-    
-    // Check for required fields
-    requiredFields.forEach(field => {
-      if (!registration[field] || registration[field].toString().trim() === '') {
-        errors.push(`Missing required field: ${field}`);
-      }
-    });
-    
-    // Add validation rules
-    // Example: Email validation
-    const emailFields = Object.keys(registration).filter(key => 
-      key.toLowerCase().includes('email')
-    );
-    emailFields.forEach(field => {
-      const email = registration[field];
-      if (email && !isValidEmail(email)) {
-        errors.push(`Invalid email format: ${field}`);
-      }
-    });
-    
-    if (errors.length === 0) {
-      validRegistrations.push({
-        ...registration,
-        _rowNumber: index + 2, // +2 because Excel is 1-indexed and has header row
-      });
-    } else {
-      invalidRegistrations.push({
-        ...registration,
-        _rowNumber: index + 2,
-        _errors: errors.join('; '),
-      });
-    }
-  });
-  
-  return { validRegistrations, invalidRegistrations };
-}
-
-
-/**
- * Identify duplicate registrations
- * A duplicate is defined as having:
- *  - same child full name
- *  - same parent full name
- *  - same phone number
- */
-function identifyDuplicateRegistrations(validRegistrations) {
-  const seen = new Map();
-  const duplicates = [];
-
-  validRegistrations.forEach(reg => {
-    // Identify sensible likely column names
-    const childNameKey = Object.keys(reg).find(k =>
-      k.toLowerCase().includes("nome") && k.toLowerCase().includes("bambino")
-    );
-
-    const parentNameKey = Object.keys(reg).find(k =>
-      k.toLowerCase().includes("parent") ||
-      k.toLowerCase().includes("genitore")
-    );
-
-    const phoneKey = Object.keys(reg).find(k =>
-      k.toLowerCase().includes("telefono") ||
-      k.toLowerCase().includes("phone")
-    );
-
-    if (!childNameKey || !parentNameKey || !phoneKey) return;
-
-    const child = reg[childNameKey]?.toString().trim().toLowerCase();
-    const parent = reg[parentNameKey]?.toString().trim().toLowerCase();
-    const phone = reg[phoneKey]?.toString().trim();
-
-    if (!child || !parent || !phone) return;
-
-    const key = `${child}__${parent}__${phone}`;
-
-    if (seen.has(key)) {
-      duplicates.push({
-        ...reg,
-        _rowNumber: reg._rowNumber,
-        _duplicateOf: seen.get(key)._rowNumber
-      });
-    } else {
-      seen.set(key, reg);
-    }
-  });
-
-  return duplicates;
-}
-
-
-/**
- * Identify possible sibling groups
- * Groups registrations by parent email/contact information
- */
-function identifySiblingGroups(validRegistrations) {
-  const familyMap = new Map();
-  
-  validRegistrations.forEach(registration => {
-    // Try to find parent email/contact fields
-    const parentEmailKey = Object.keys(registration).find(key => 
-      key.toLowerCase().includes('email') && 
-      (key.toLowerCase().includes('parent') || key.toLowerCase().includes('genitore'))
-    );
-    
-    const parentNameKey = Object.keys(registration).find(key =>
-      key.toLowerCase().includes('parent') || 
-      key.toLowerCase().includes('genitore') ||
-      key.toLowerCase().includes('cognome')
-    );
-    
-    const childNameKey = Object.keys(registration).find(key =>
-      key.toLowerCase().includes('nome') && 
-      key.toLowerCase().includes('bambino')
-    );
-    
-    if (!parentEmailKey) return;
-    
-    const parentEmail = registration[parentEmailKey]?.toString().trim().toLowerCase();
-    if (!parentEmail) return;
-    
-    const parentName = registration[parentNameKey]?.toString().trim() || 'Unknown';
-    const childName = registration[childNameKey]?.toString().trim() || 'Unknown';
-    
-    if (!familyMap.has(parentEmail)) {
-      familyMap.set(parentEmail, {
-        familyId: parentEmail,
-        parentEmail: parentEmail,
-        parentName: parentName,
-        children: 0,
-        childrenNames: [],
-      });
-    }
-    
-    const family = familyMap.get(parentEmail);
-    family.children++;
-    family.childrenNames.push(childName);
-  });
-  
-  // Filter to only show families with multiple children (potential siblings)
-  const siblingGroups = Array.from(familyMap.values())
-    .filter(family => family.children > 1)
-    .map(family => ({
-      ...family,
-      childrenNames: family.childrenNames.join(', ')
-    }));
-  
-  return siblingGroups;
-}
-
-/**
- * Write results to Excel file with multiple sheets
- */
-function writeResultsToExcel(filePath, results) {
-  try {
-    const workbook = XLSX.utils.book_new();
-
-    // Add valid registrations sheet
-    if (results.validRegistrations && results.validRegistrations.length > 0) {
-      const validSheet = XLSX.utils.json_to_sheet(results.validRegistrations);
-      XLSX.utils.book_append_sheet(workbook, validSheet, 'Valid_Registrations');
-    }
-
-    // Add invalid registrations sheet
-    if (results.invalidRegistrations && results.invalidRegistrations.length > 0) {
-      const invalidSheet = XLSX.utils.json_to_sheet(results.invalidRegistrations);
-      XLSX.utils.book_append_sheet(workbook, invalidSheet, 'Invalid_Registrations');
-    }
-
-    // Add duplicate registrations sheet
-    if (results.duplicateRegistrations && results.duplicateRegistrations.length > 0) {
-      const dupSheet = XLSX.utils.json_to_sheet(results.duplicateRegistrations);
-      XLSX.utils.book_append_sheet(workbook, dupSheet, 'Duplicate_Registrations');
-    }
-
-    // Add sibling groups sheet
-    if (results.siblingGroups && results.siblingGroups.length > 0) {
-      const siblingSheet = XLSX.utils.json_to_sheet(results.siblingGroups);
-      XLSX.utils.book_append_sheet(workbook, siblingSheet, 'Possible_Siblings');
-    }
-
-    // Add summary sheet
-    const summary = [{
-      'Total Registrations': results.totalCount,
-      'Valid Registrations': results.validCount,
-      'Duplicate Registrations': results.duplicateCount,
-      'Invalid Registrations': results.invalidCount,
-      'Sibling Groups': results.siblingGroupsCount,
-      'Processed At': results.processedAt,
-    }];
-    const summarySheet = XLSX.utils.json_to_sheet(summary);
-    XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
-
-    XLSX.writeFile(workbook, filePath);
-    return true;
-  } catch (error) {
-    throw new Error(`Failed to write Excel file: ${error.message}`);
-  }
-}
-
-/**
- * Email validation helper
- */
-function isValidEmail(email) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-}
-
-/**
- * Get column mapping from headers
- * Helps normalize column names
- */
-function getColumnMapping(data) {
-  if (!data || data.length === 0) return {};
-
-  const headers = Object.keys(data[0]);
-  const mapping = {};
-
-  headers.forEach(header => {
-    const normalized = header.toLowerCase().trim();
-    mapping[normalized] = header;
-  });
-
-  return mapping;
-}
-
 module.exports = {
-  processRegistrations,
-  readRegistrations,
-  writeResultsToExcel,
-  getColumnMapping,
+  processRegistrations
 };

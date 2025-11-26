@@ -6,8 +6,8 @@ import './Camp.css';
 
 
 export default function Camp() {
-  const { slug } = useParams(); // Get slug from URL
-  const navigate = useNavigate(); // For navigation
+  const { slug } = useParams();
+  const navigate = useNavigate();
   const [camp, setCamp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -16,8 +16,10 @@ export default function Camp() {
   const [processingData, setProcessingData] = useState(null);
   const [processingLoading, setProcessingLoading] = useState(true);
   const [processingError, setProcessingError] = useState(null);
+  const [activeTab, setActiveTab] = useState('general');
+  const [registrations, setRegistrations] = useState([]);
 
-  const campSlug = slug; // Use the slug from URL params
+  const campSlug = slug;
 
   useEffect(() => {
     loadCampDetails();
@@ -44,16 +46,18 @@ export default function Camp() {
     }
   };
 
-   const loadProcessingData = async () => {
+  const loadProcessingData = async () => {
     try {
       setProcessingLoading(true);
       setProcessingError(null);
       
-      // Use IPC to get processing results
       const result = await api.processCampRegistrations(campSlug);
       
       if (result.success && result.data) {
         setProcessingData(result.data);
+        if (result.data.registrations) {
+          setRegistrations(result.data.registrations);
+        }
       } else {
         setProcessingError(result.error || "Failed to process data");
       }
@@ -65,9 +69,8 @@ export default function Camp() {
     }
   };
 
-
   const handleBack = () => {
-    navigate('/'); // Navigate back to home/camps list
+    navigate('/');
   };
 
   const handleCopyUrl = async () => {
@@ -82,7 +85,6 @@ export default function Camp() {
 
   const handleDownloadExcel = async () => {
     try {
-      // Replace with your actual download endpoint
       const response = await fetch(`/api/camps/${campSlug}/download-excel`);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -97,6 +99,29 @@ export default function Camp() {
       console.error('Failed to download:', err);
       alert('Failed to download Excel file');
     }
+  };
+
+  const handleDeleteRegistration = async (registrationId) => {
+    if (!window.confirm('Are you sure you want to delete this registration?')) {
+      return;
+    }
+    
+    try {
+      const result = await api.deleteRegistration(campSlug, registrationId);
+      if (result.success) {
+        setRegistrations(prev => prev.filter(reg => reg.id !== registrationId));
+        loadProcessingData();
+      } else {
+        alert('Failed to delete registration');
+      }
+    } catch (err) {
+      console.error('Failed to delete:', err);
+      alert('Failed to delete registration');
+    }
+  };
+
+  const handleAddRegistration = () => {
+    alert('Add registration feature - implement modal or navigation');
   };
 
   if (loading) {
@@ -125,7 +150,7 @@ export default function Camp() {
     );
   }
 
-return (
+  return (
     <div className="camp-details-container">
       {/* Header */}
       <div className="camp-details-header">
@@ -227,117 +252,202 @@ return (
 
         <div className="camp-details-divider"></div>
 
-        {/* Resources Grid */}
-        <div className="camp-details-resources-section">
-          <h2 className="camp-details-section-title">Camp Resources</h2>
-          <div className="camp-details-resources-grid">
-            
-            {/* Registration Form */}
-            <div className="camp-details-resource-card">
-              <div className="camp-details-resource-icon resource-icon-form">
-                <FileText size={32} />
-              </div>
-              <div className="camp-details-resource-content">
-                <h3 className="camp-details-resource-title">Registration Form</h3>
-                <p className="camp-details-resource-description">
-                  Share this link with parents to register their children for the camp
-                </p>
+        {/* Tab Navigation */}
+        <div className="camp-details-tabs">
+          <button 
+            className={`camp-details-tab ${activeTab === 'general' ? 'active' : ''}`}
+            onClick={() => setActiveTab('general')}
+          >
+            General Info
+          </button>
+          <button 
+            className={`camp-details-tab ${activeTab === 'registrations' ? 'active' : ''}`}
+            onClick={() => setActiveTab('registrations')}
+          >
+            Registration Management
+          </button>
+        </div>
+
+        {/* Tab Content - General Info */}
+        {activeTab === 'general' && (
+          <>
+            {/* Resources Grid */}
+            <div className="camp-details-resources-section">
+              <h2 className="camp-details-section-title">Camp Resources</h2>
+              <div className="camp-details-resources-grid">
                 
-                <div className="camp-details-url-container">
-                  <input 
-                    type="text" 
-                    value={camp.form_url} 
-                    readOnly 
-                    className="camp-details-url-input"
-                  />
-                  <button 
-                    onClick={handleCopyUrl}
-                    className="camp-details-copy-button"
-                    title="Copy to clipboard"
-                  >
-                    {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
-                  </button>
+                {/* Registration Form */}
+                <div className="camp-details-resource-card">
+                  <div className="camp-details-resource-icon resource-icon-form">
+                    <FileText size={32} />
+                  </div>
+                  <div className="camp-details-resource-content">
+                    <h3 className="camp-details-resource-title">Registration Form</h3>
+                    <p className="camp-details-resource-description">
+                      Share this link with parents to register their children for the camp
+                    </p>
+                    
+                    <div className="camp-details-url-container">
+                      <input 
+                        type="text" 
+                        value={camp.form_url} 
+                        readOnly 
+                        className="camp-details-url-input"
+                      />
+                      <button 
+                        onClick={handleCopyUrl}
+                        className="camp-details-copy-button"
+                        title="Copy to clipboard"
+                      >
+                        {copiedUrl ? <Check size={18} /> : <Copy size={18} />}
+                      </button>
+                    </div>
+
+                    <a 
+                      href={camp.form_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="camp-details-resource-link"
+                    >
+                      <span>Open Form</span>
+                      <ExternalLink size={16} />
+                    </a>
+                  </div>
                 </div>
 
-                <a 
-                  href={camp.form_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="camp-details-resource-link"
-                >
-                  <span>Open Form</span>
-                  <ExternalLink size={16} />
-                </a>
+                {/* Spreadsheet */}
+                <div className="camp-details-resource-card">
+                  <div className="camp-details-resource-icon resource-icon-sheet">
+                    <Table size={32} />
+                  </div>
+                  <div className="camp-details-resource-content">
+                    <h3 className="camp-details-resource-title">Response Spreadsheet</h3>
+                    <p className="camp-details-resource-description">
+                      Access live registration data directly from form submissions. Updates automatically when new registrations are received.
+                    </p>
+                    <a 
+                      href={camp.sheet_url} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="camp-details-resource-link"
+                    >
+                      <span>Open Live Spreadsheet</span>
+                      <ExternalLink size={16} />
+                    </a>
+                  </div>
+                </div>
+
+                {/* XLSX Download */}
+                <div className="camp-details-resource-card">
+                  <div className="camp-details-resource-icon resource-icon-xlsx">
+                    <Download size={32} />
+                  </div>
+                  <div className="camp-details-resource-content">
+                    <h3 className="camp-details-resource-title">Excel Export</h3>
+                    <p className="camp-details-resource-description">
+                      Download a local copy of the registration data as an Excel file to your computer for offline access.
+                    </p>
+                    <button 
+                      onClick={handleDownloadExcel}
+                      className="camp-details-download-button"
+                    >
+                      <Download size={16} />
+                      <span>Download Excel File</span>
+                    </button>
+                  </div>
+                </div>
+
               </div>
             </div>
 
-            {/* Spreadsheet */}
-            <div className="camp-details-resource-card">
-              <div className="camp-details-resource-icon resource-icon-sheet">
-                <Table size={32} />
-              </div>
-              <div className="camp-details-resource-content">
-                <h3 className="camp-details-resource-title">Response Spreadsheet</h3>
-                <p className="camp-details-resource-description">
-                  Access live registration data directly from form submissions. Updates automatically when new registrations are received.
-                </p>
-                <a 
-                  href={camp.sheet_url} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="camp-details-resource-link"
-                >
-                  <span>Open Live Spreadsheet</span>
-                  <ExternalLink size={16} />
-                </a>
+            <div className="camp-details-divider"></div>
+
+            {/* Technical Details */}
+            <div className="camp-details-technical-section">
+              <h2 className="camp-details-section-title">Technical Details</h2>
+              <div className="camp-details-details-grid">
+                <div className="camp-details-detail-item">
+                  <span className="camp-details-detail-label">Form ID:</span>
+                  <code className="camp-details-detail-value">{camp.form_id}</code>
+                </div>
+                <div className="camp-details-detail-item">
+                  <span className="camp-details-detail-label">Sheet ID:</span>
+                  <code className="camp-details-detail-value">{camp.sheet_id}</code>
+                </div>
+                <div className="camp-details-detail-item">
+                  <span className="camp-details-detail-label">Created:</span>
+                  <span className="camp-details-detail-value">
+                    {new Date(camp.created_at).toLocaleString('it-IT')}
+                  </span>
+                </div>
               </div>
             </div>
+          </>
+        )}
 
-            {/* XLSX Download */}
-            <div className="camp-details-resource-card">
-              <div className="camp-details-resource-icon resource-icon-xlsx">
-                <Download size={32} />
-              </div>
-              <div className="camp-details-resource-content">
-                <h3 className="camp-details-resource-title">Excel Export</h3>
-                <p className="camp-details-resource-description">
-                  Download a local copy of the registration data as an Excel file to your computer for offline access.
-                </p>
-                <button 
-                  onClick={handleDownloadExcel}
-                  className="camp-details-download-button"
-                >
-                  <Download size={16} />
-                  <span>Download Excel File</span>
-                </button>
-              </div>
+        {/* Tab Content - Registration Management */}
+        {activeTab === 'registrations' && (
+          <div className="camp-details-registrations-section">
+            <div className="camp-details-registrations-header">
+              <h2 className="camp-details-section-title">Registration List</h2>
+              <button 
+                onClick={handleAddRegistration}
+                className="camp-details-add-button"
+              >
+                + Add Registration
+              </button>
             </div>
 
+            {registrations.length === 0 ? (
+              <div className="camp-details-empty-state">
+                <p>No registrations yet</p>
+              </div>
+            ) : (
+              <div className="camp-details-table-container">
+                <table className="camp-details-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Phone</th>
+                      <th>Registered At</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {registrations.map((registration) => (
+                      <tr key={registration.id}>
+                        <td>{registration.name || 'N/A'}</td>
+                        <td>{registration.email || 'N/A'}</td>
+                        <td>{registration.phone || 'N/A'}</td>
+                        <td>
+                          {registration.created_at 
+                            ? new Date(registration.created_at).toLocaleString('it-IT')
+                            : 'N/A'}
+                        </td>
+                        <td>
+                          <span className={`camp-details-status-badge status-${registration.status || 'pending'}`}>
+                            {registration.status || 'pending'}
+                          </span>
+                        </td>
+                        <td>
+                          <button 
+                            onClick={() => handleDeleteRegistration(registration.id)}
+                            className="camp-details-delete-button"
+                            title="Delete registration"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
-        </div>
-
-        <div className="camp-details-divider"></div>
-
-        {/* Technical Details */}
-        <div className="camp-details-technical-section">
-          <h2 className="camp-details-section-title">Technical Details</h2>
-          <div className="camp-details-details-grid">
-            <div className="camp-details-detail-item">
-              <span className="camp-details-detail-label">Form ID:</span>
-              <code className="camp-details-detail-value">{camp.form_id}</code>
-            </div>
-            <div className="camp-details-detail-item">
-              <span className="camp-details-detail-label">Sheet ID:</span>
-              <code className="camp-details-detail-value">{camp.sheet_id}</code>
-            </div>
-            <div className="camp-details-detail-item">
-              <span className="camp-details-detail-label">Created:</span>
-              <span className="camp-details-detail-value">
-                {new Date(camp.created_at).toLocaleString('it-IT')}
-              </span>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

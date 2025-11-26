@@ -438,19 +438,19 @@
   color: #155724;
 }
 
-.stat-card-danger {
+.stat-card-warning {
   background-color: #ffe6e6;
 }
-.stat-card-danger .stat-card-value {
+.stat-card-warning .stat-card-value {
   color: #721c24;
 }
 
-.stat-card-warning {
+.stat-card-danger {
   border-color: #fff3cd;
   background: linear-gradient(135deg, #fff3cd 0%, #ffe8a1 100%);
 }
 
-.stat-card-warning .stat-card-value {
+.stat-card-danger .stat-card-value {
   color: #856404;
 }
 
@@ -520,6 +520,155 @@
   padding: 4px 8px;
   border-radius: 4px;
   word-break: break-all;
+}
+
+/* Tab Navigation */
+.camp-details-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e5e7eb;
+  margin-bottom: 24px;
+}
+
+.camp-details-tab {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  color: #6b7280;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+  bottom: -2px;
+}
+
+.camp-details-tab:hover {
+  color: #374151;
+  background-color: #f9fafb;
+}
+
+.camp-details-tab.active {
+  color: #2563eb;
+  border-bottom-color: #2563eb;
+}
+
+/* Registration Management Section */
+.camp-details-registrations-section {
+  padding: 24px 0;
+}
+
+.camp-details-registrations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.camp-details-add-button {
+  padding: 10px 20px;
+  background-color: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.camp-details-add-button:hover {
+  background-color: #059669;
+}
+
+.camp-details-empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #6b7280;
+  font-size: 16px;
+}
+
+/* Table Styles */
+.camp-details-table-container {
+  overflow-x: auto;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.camp-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+}
+
+.camp-details-table thead {
+  background-color: #f9fafb;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.camp-details-table th {
+  padding: 12px 16px;
+  text-align: left;
+  font-size: 14px;
+  font-weight: 600;
+  color: #374151;
+  white-space: nowrap;
+}
+
+.camp-details-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  font-size: 14px;
+  color: #4b5563;
+}
+
+.camp-details-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.camp-details-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+/* Status Badge */
+.camp-details-status-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.camp-details-status-badge.status-valid,
+.camp-details-status-badge.status-confirmed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.camp-details-status-badge.status-pending {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.camp-details-status-badge.status-invalid {
+  background-color: #fee2e2;
+  color: #991b1b;
+}
+
+/* Delete Button */
+.camp-details-delete-button {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 4px 8px;
+  transition: transform 0.2s;
+}
+
+.camp-details-delete-button:hover {
+  transform: scale(1.2);
 }
 
 /* Responsive Design */
