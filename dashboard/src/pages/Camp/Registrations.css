@@ -1,0 +1,33 @@
+.camp-details-table-container {
+  overflow-x: auto;
+}
+
+.camp-details-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: auto;
+}
+
+.camp-details-table th,
+.camp-details-table td {
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  text-align: left;
+  min-width: 120px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.camp-details-table th {
+  background-color: #f4f4f4;
+  font-weight: bold;
+}
+
+.camp-details-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.camp-details-table tbody tr:last-child td {
+  border-bottom: none;
+}

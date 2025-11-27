@@ -245,6 +245,49 @@ export const api = {
     }
   },
 
+
+
+
+
+  /* -----------------------------------------------------------------------------------------------
+   * Registrations
+   * ----------------------------------------------------------------------------------------------- */
+  async getRegistrations(campSlug) {
+    try {
+      return await window.electronApi.getRegistrations(campSlug);
+    } catch (error) {
+      console.error('Error getting registrations:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async modifyRegistration(campSlug, registration) {
+    try {
+      return await window.electronApi.modifyRegistration(campSlug, registration);
+    } catch (error) {
+      console.error('Error modifying registration:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async postRegistration(campSlug, registration) {
+    try {
+      return await window.electronApi.postRegistration(campSlug, registration);
+    } catch (error) {
+      console.error('Error posting registration:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
+  async deleteRegistration(campSlug, registration_id) {
+    try {
+      return await window.electronApi.deleteRegistration(campSlug, registration_id);
+    } catch (error) {
+      console.error('Error deleting registration:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
   async processCampRegistrations(campSlug) {
     try {
       return await window.electronApi.processCampRegistrations(campSlug);
@@ -254,5 +297,5 @@ export const api = {
     }
   },
 
-  
+
 };

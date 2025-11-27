@@ -95,6 +95,12 @@ const api = {
   getCamp: (slug) => ipcRenderer.invoke('camp:get', slug),
   updateCamp: (slug, updates) => ipcRenderer.invoke('camp:update', slug, updates),
   deleteCamp: (slug) => ipcRenderer.invoke('camp:delete', slug),
+
+  // Registration methods
+  getRegistrations: (slug) => ipcRenderer.invoke('camp:registrations:get', slug),
+  modifyRegistration: (slug, registration) => ipcRenderer.invoke('camp:registrations:modify', slug, registration),
+  postRegistration: (slug, registration) => ipcRenderer.invoke('camp:registrations:post', slug, registration),
+  deleteRegistration: (slug, registration_id) => ipcRenderer.invoke('camp:registrations:delete', slug, registration_id),
   processCampRegistrations: (slug) => ipcRenderer.invoke('camp:process', slug),
 };
 

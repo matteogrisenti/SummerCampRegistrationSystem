@@ -31,131 +31,121 @@ async function syncRegistrations(campSlug, xlsxPath, sheetId) {
         }
     }
 
-    // Prepare the workbook to write
-    let workbook;
-    let addedSheetData = [];
-    let deletedSheetData = [];
-    let modifiedSheetData = [];
+    // Download the latest sheet and get the sheet title and rows
+    // We do this BEFORE checking for local file existence because we need the data in both cases
+    const { sheetTitle, rows } = await downloadSheetAsExcel(auth, sheetId);
 
-    let originalRegistrationsWithIds = [];
+    // Extract headers and data
+    const headers = rows[0];
+    const dataRows = rows.slice(1);
+
+    // Convert to objects
+    const allDownloadedRegistrations = dataRows.map(row => {
+        const obj = {};
+        headers.forEach((header, index) => {
+            obj[header] = row[index];
+        });
+        return obj;
+    });
+
+    // Prepare "Original Registrations" data (Full copy with IDs)
+    const originalRegistrationsWithIds = allDownloadedRegistrations.map((reg, index) => ({
+        ID: index + 1,
+        ...reg
+    }));
 
     // Check if the file exists locally
-    console.log("[SYNC] Local Excel exist: ", fileExists(localRegistrationsPath));
+    const localFileExists = fileExists(localRegistrationsPath);
+    console.log("[SYNC] Local Excel exist: ", localFileExists);
 
-    // CASE 1: No local history yet. Initialize with downloaded data.
-    if (!fileExists(localRegistrationsPath)) {
-        // DEBUG PRINT
+    let workbook;
+
+    if (!localFileExists) {
+        // CASE 1: No local history yet. Initialize with downloaded data.
         console.log("[SYNC] Initializing new workbook — no existing registrations.xlsx found.");
-        
-        // Download the latest sheet
-        await downloadSheetAsExcel(auth, sheetId, xlsxPath);
-
-        // Read the newly downloaded raw data
-        const allDownloadedRegistrations = readRegistrations(xlsxPath);
-        // Prepare "Original Registrations" data (Full copy with IDs)
-        originalRegistrationsWithIds = allDownloadedRegistrations.map((reg, index) => ({
-            ...reg,
-            ID: index + 1
-        }));
 
         registrations = originalRegistrationsWithIds;
-        lastRowProcessed = registrations.length + 1;
+        lastRowProcessed = registrations.length;
 
         // Initialize empty arrays for other sheets
-        addedSheetData = [];
-        deletedSheetData = [];
-        modifiedSheetData = [];
+        const addedSheetData = [];
+        const deletedSheetData = [];
+        const modifiedSheetData = [];
 
+        // Construct the Workbook
         workbook = XLSX.utils.book_new();
+
+        // Sheet 1: Original Registrations (Source of Truth)
+        const originalSheet = XLSX.utils.json_to_sheet(originalRegistrationsWithIds);
+        XLSX.utils.book_append_sheet(workbook, originalSheet, 'Original Registrations');
+
+        // Sheet 2: All Registrations (Historical Accumulation)
+        const allSheet = XLSX.utils.json_to_sheet(registrations);
+        XLSX.utils.book_append_sheet(workbook, allSheet, 'All Registrations');
+
+        // Sheet 3: Added Registrations
+        const addedSheet = XLSX.utils.json_to_sheet(addedSheetData, { header: headers });
+        XLSX.utils.book_append_sheet(workbook, addedSheet, 'Added Registrations');
+
+        // Sheet 4: Deleted Registrations
+        const deletedSheet = XLSX.utils.json_to_sheet(deletedSheetData, { header: headers });
+        XLSX.utils.book_append_sheet(workbook, deletedSheet, 'Deleted Registrations');
+
+        // Sheet 5: Modified Registrations
+        const modifiedSheet = XLSX.utils.json_to_sheet(modifiedSheetData, { header: headers });
+        XLSX.utils.book_append_sheet(workbook, modifiedSheet, 'Modified Registrations');
+
+        // Write to file
+        XLSX.writeFile(workbook, localRegistrationsPath);
+
     } else {
         // CASE 2: Local history exists. Merge new rows and preserve other sheets.
-        // DEBUG PRINT
         console.log("[SYNC] Merging with existing workbook — registrations.xlsx found.");
-        
-        // Download the latest sheet
-        await downloadSheetAsExcel(auth, sheetId, xlsxPath);
 
-        // Read the newly downloaded raw data
-        const allDownloadedRegistrations = readRegistrations(xlsxPath);
-        // Prepare "Original Registrations" data (Full copy with IDs)
-        originalRegistrationsWithIds = allDownloadedRegistrations.map((reg, index) => ({
-            ...reg,
-            ID: index + 1
-        }));
-
-
-        // Read existing workbook to preserve other sheets
         try {
             const existingWorkbook = XLSX.readFile(localRegistrationsPath);
 
             // Read existing "All Registrations"
-            const oldRegistrations = XLSX.utils.sheet_to_json(existingWorkbook.Sheets['All Registrations'] || existingWorkbook.Sheets[existingWorkbook.SheetNames[0]]);
+            // Try to get by name, fallback to first sheet if name doesn't match (though it should)
+            const allRegSheet = existingWorkbook.Sheets['All Registrations'] || existingWorkbook.Sheets[existingWorkbook.SheetNames[0]];
+            const oldRegistrations = XLSX.utils.sheet_to_json(allRegSheet);
 
-            // Read existing "Added Registrations", "Deleted Registrations", "Modified Registrations"
-            addedSheetData = XLSX.utils.sheet_to_json(existingWorkbook.Sheets['Added Registrations'], { defval: "" });
-            console.log("Added Sheet Data:", addedSheetData);
-            deletedSheetData = XLSX.utils.sheet_to_json(existingWorkbook.Sheets['Deleted Registrations'], { defval: "" });
-            modifiedSheetData = XLSX.utils.sheet_to_json(existingWorkbook.Sheets['Modified Registrations'], { defval: "" });
-            
             // Determine which rows are new
-            const previousCount = lastRowProcessed > 1 ? lastRowProcessed - 1 : 0;
-            const newRawRegistrations = allDownloadedRegistrations.slice(previousCount + 1);
+            // Use lastRowProcessed to avoid duplicates if metadata is out of sync
+            const newRawRegistrations = allDownloadedRegistrations.slice(lastRowProcessed);
+            console.log('[SYNC] new registrations count: ', newRawRegistrations.length);
 
-            // Assign IDs to new registrations
-            let nextId = oldRegistrations.length > 0
-                ? Math.max(...oldRegistrations.map(r => r._rowNumber || 0)) + 1
-                : 2;
-
-            const newRegistrationsWithIds = newRawRegistrations.map(reg => {
-                const r = { ...reg, _rowNumber: nextId };
-                nextId++;
-                return r;
-            });
+            // Concat new rows to old ones
+            // We need to ensure new rows also have IDs. 
+            // The IDs for new rows should continue from where the old ones left off.
+            const startingId = oldRegistrations.length + 1;
+            const newRegistrationsWithIds = newRawRegistrations.map((reg, index) => ({
+                ID: startingId + index,
+                ...reg
+            }));
 
             registrations = oldRegistrations.concat(newRegistrationsWithIds);
-            lastRowProcessed = allDownloadedRegistrations.length + 1;
+            lastRowProcessed = allDownloadedRegistrations.length;
 
-            workbook = XLSX.utils.book_new();
+            // Update "Original Registrations" sheet (Always a fresh copy of what's currently in the source)
+            const newOriginalSheet = XLSX.utils.json_to_sheet(originalRegistrationsWithIds);
+            existingWorkbook.Sheets['Original Registrations'] = newOriginalSheet;
+
+            // Update "All Registrations" sheet (The merged history)
+            const newAllSheet = XLSX.utils.json_to_sheet(registrations);
+            existingWorkbook.Sheets['All Registrations'] = newAllSheet;
+
+            // Write the updated workbook back to file
+            XLSX.writeFile(existingWorkbook, localRegistrationsPath);
 
         } catch (error) {
             console.error("[SYNC] Error reading existing workbook, falling back to overwrite:", error);
-            // Fallback: treat as new
-            registrations = [...originalRegistrationsWithIds];
-            lastRowProcessed = registrations.length + 1;
-            workbook = XLSX.utils.book_new();
         }
     }
 
     // Update metadata
     metadata.last_row_processed = lastRowProcessed;
     fs.writeFileSync(metadataPath, JSON.stringify(metadata, null, 2));
-
-    // Construct the Workbook
-    // Add the headers even if there is no data yet
-    const headers = Object.keys(originalRegistrationsWithIds[0] || {});
-
-    // Sheet 1: Original Registrations (Source of Truth)
-    const originalSheet = XLSX.utils.json_to_sheet(originalRegistrationsWithIds);
-    XLSX.utils.book_append_sheet(workbook, originalSheet, 'Original Registrations');
-
-    // Sheet 2: All Registrations (Historical Accumulation)
-    const allSheet = XLSX.utils.json_to_sheet(registrations);
-    XLSX.utils.book_append_sheet(workbook, allSheet, 'All Registrations');
-
-    // Sheet 3: Added Registrations
-    const addedSheet = XLSX.utils.json_to_sheet(addedSheetData, { header: headers });
-    XLSX.utils.book_append_sheet(workbook, addedSheet, 'Added Registrations');
-
-    // Sheet 4: Deleted Registrations
-    const deletedSheet = XLSX.utils.json_to_sheet(deletedSheetData, { header: headers });
-    XLSX.utils.book_append_sheet(workbook, deletedSheet, 'Deleted Registrations');
-
-    // Sheet 5: Modified Registrations
-    const modifiedSheet = XLSX.utils.json_to_sheet(modifiedSheetData, { header: headers });
-    XLSX.utils.book_append_sheet(workbook, modifiedSheet, 'Modified Registrations');
-
-    // Write to file
-    XLSX.writeFile(workbook, localRegistrationsPath);
 
     return { registrations, outputPath: localRegistrationsPath };
 }

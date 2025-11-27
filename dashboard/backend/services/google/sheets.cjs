@@ -43,26 +43,23 @@ async function readSheetAsExcel(auth, sheetId, pageId = 0, startRow = 0) {
   return rows;
 }
 
-async function downloadSheetAsExcel(auth, sheetId, destPath) {
+async function downloadSheetAsExcel(auth, sheetId) {
+  /* This function download a sheet from Google Sheets and return it as a object result
+  */
   const sheets = google.sheets({ version: 'v4', auth });
   const res = await sheets.spreadsheets.get({
     spreadsheetId: sheetId,
     includeGridData: true
   });
-  const workbook = XLSX.utils.book_new();
 
   registration_sheet = res.data.sheets[0];
-  
+
   const sheetTitle = registration_sheet.properties.title;
   const rows = registration_sheet.data[0].rowData.map(row => {
     return row.values ? row.values.map(cell => cell.formattedValue || '') : [];
   });
 
-  const worksheet = XLSX.utils.aoa_to_sheet(rows);
-  XLSX.utils.book_append_sheet(workbook, worksheet, sheetTitle);
-  
-  XLSX.writeFile(workbook, destPath); 
-  console.log(`[DOWNLOAD] Sheet downloaded as XLSX to ${destPath}`);
+  return { sheetTitle, rows };
 }
 
 async function setSheetHeaders(auth, sheetId, headers) {
@@ -76,4 +73,4 @@ async function setSheetHeaders(auth, sheetId, headers) {
   });
 }
 
-module.exports = { createSheet, setSheetHeaders, downloadSheetAsExcel, readSheetAsExcel};
+module.exports = { createSheet, setSheetHeaders, downloadSheetAsExcel, readSheetAsExcel };

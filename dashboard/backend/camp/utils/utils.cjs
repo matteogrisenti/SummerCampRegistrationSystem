@@ -53,67 +53,97 @@ function validateRegistrations(registrations) {
             }
         });
 
-        if (errors.length === 0) {
+        // Add status based on validation
+        if (errors.length == 0) {
+            // console.log('[REG] Registration: ' + registration.name + ' is valid')
+            registration.status = 'valid';
+            registration._errors = '';
             validRegistrations.push(registration);
         } else {
-            invalidRegistrations.push({
-                ...registration,
-                _errors: errors.join('; '),
-            });
+            registration.status = 'invalid';
+            registration._errors = errors.join('; ');
+            invalidRegistrations.push(registration);
         }
     });
 
     return { validRegistrations, invalidRegistrations };
 }
 
-/**
- * Identify duplicate registrations
- */
+// Identify duplicate registrations
 function identifyDuplicateRegistrations(validRegistrations) {
     const seen = new Map();
     const duplicates = [];
+    const normalize = (str) => str ? str.toString().toLowerCase().replace(/\s+/g, '') : '';
 
     validRegistrations.forEach(reg => {
-        const childNameKey = Object.keys(reg).find(k =>
-            k.toLowerCase().includes("nome") && k.toLowerCase().includes("bambino")
-        );
-        const parentNameKey = Object.keys(reg).find(k =>
-            k.toLowerCase().includes("parent") || k.toLowerCase().includes("genitore")
-        );
-        const phoneKey = Object.keys(reg).find(k =>
-            k.toLowerCase().includes("telefono") || k.toLowerCase().includes("phone")
-        );
+        // Find keys for child name, parent name, and phone
+        // Look for a child name column. It may be called "Nome Cognome Ragazzo" or similar.
+        const childKey = Object.keys(reg).find(k => {
+            const low = k.toLowerCase();
+            // Must contain "nome" and not refer to a parent/guardian
+            const isChild = low.includes('nome') && !low.includes('genitore') && (low.includes('bambino') || low.includes('ragazzo') || low.includes('cognome'));
+            return isChild;
+        });
+        // Prefer a parent name column (contains both 'genitore' and 'nome' or 'parent' and 'nome')
+        const parentKey = Object.keys(reg).find(k => {
+            const low = k.toLowerCase();
+            const isParentName = (low.includes('genitore') || low.includes('parent')) && low.includes('nome');
+            if (isParentName) return true;
+            // fallback to any column that mentions parent or genitore (e.g., email)
+            return low.includes('genitore') || low.includes('parent');
+        });
+        const phoneKey = Object.keys(reg).find(k => k.toLowerCase().includes('telefono') || k.toLowerCase().includes('phone'));
+        if (!childKey) {
+            console.log('[REG] Registration: ' + reg.name + ' is invalid: missing child name');
+            return; // cannot evaluate without child name
+        }
 
-        if (!childNameKey || !parentNameKey || !phoneKey) return;
+        const child = normalize(reg[childKey]);
+        const parent = parentKey ? normalize(reg[parentKey]) : '';
+        const phone = phoneKey ? normalize(reg[phoneKey]) : '';
 
-        const child = reg[childNameKey]?.toString().trim().toLowerCase();
-        const parent = reg[parentNameKey]?.toString().trim().toLowerCase();
-        const phone = reg[phoneKey]?.toString().trim();
-
-        if (!child || !parent || !phone) return;
-
-        const key = `${child}__${parent}__${phone}`;
-
-        if (seen.has(key)) {
-            duplicates.push({
-                ...reg,
-                _duplicateOf: seen.get(key)._rowNumber
-            });
+        if (!child) {
+            console.log('[REG] Registration: ' + reg.name + ' is invalid: missing child name');
+            return;
+        }
+        // Need at least one additional identifier to compare (parent name or phone)
+        if (!parent && !phone) {
+            console.log('[REG] Registration: ' + reg.name + ' is invalid: missing parent name or phone');
+            return;
+        }
+        // Build composite keys for matching
+        const keys = [];
+        if (parent) keys.push(`${child}__${parent}`);
+        if (phone) keys.push(`${child}__${phone}`);
+        let isDup = false;
+        let original = null;
+        for (const k of keys) {
+            if (seen.has(k)) {
+                isDup = true;
+                original = seen.get(k);
+                break;
+            }
+        }
+        if (isDup) {
+            if (reg.status !== 'invalid') {
+                reg.status = 'duplicate';
+                reg.isDuplicate = true;
+            }
+            if (original && original._rowNumber) {
+                reg._duplicateOf = original._rowNumber;
+            }
+            duplicates.push(reg);
         } else {
-            seen.set(key, reg);
+            // Store each key mapping to this registration
+            keys.forEach(k => seen.set(k, reg));
         }
     });
-
     return duplicates;
 }
-
-/**
- * Identify possible sibling groups
- */
-function identifySiblingGroups(validRegistrations) {
+function identifySiblingGroups(registrations) {
     const familyMap = new Map();
 
-    validRegistrations.forEach(registration => {
+    registrations.forEach(registration => {
         const parentEmailKey = Object.keys(registration).find(key =>
             key.toLowerCase().includes('email') &&
             (key.toLowerCase().includes('parent') || key.toLowerCase().includes('genitore'))
