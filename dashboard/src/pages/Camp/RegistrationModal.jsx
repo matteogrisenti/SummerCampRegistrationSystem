@@ -5,12 +5,16 @@ export default function RegistrationModal({ isOpen, onClose, registration, onSav
     const [isEditing, setIsEditing] = useState(false);
     const [formData, setFormData] = useState({});
 
+    // Check if this is a new registration (add mode)
+    const isAddMode = registration && !registration.ID;
+
     useEffect(() => {
         if (registration) {
             setFormData({ ...registration });
+            // Automatically enable editing mode when adding a new registration
+            setIsEditing(isAddMode);
         }
-        setIsEditing(false);
-    }, [registration, isOpen]);
+    }, [registration, isOpen, isAddMode]);
 
     if (!isOpen || !registration) return null;
 
@@ -37,36 +41,47 @@ export default function RegistrationModal({ isOpen, onClose, registration, onSav
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Registration Details</h2>
+                    <h2>{isAddMode ? 'Add Registration' : 'Registration Details'}</h2>
                     <div className="modal-actions">
                         {!isEditing ? (
                             <button className="btn-modify" onClick={handleModify}>Modify</button>
                         ) : (
                             <>
                                 <button className="btn-discard" onClick={handleDiscard}>Discard</button>
-                                <button className="btn-accept" onClick={handleAccept}>Accept</button>
+                                <button className="btn-accept" onClick={handleAccept}>
+                                    {isAddMode ? 'Save' : 'Accept'}
+                                </button>
                             </>
                         )}
                         <button className="btn-close" onClick={onClose}>&times;</button>
                     </div>
                 </div>
                 <div className="modal-body">
-                    {Object.keys(formData).filter(k => k !== 'Timestamp' && k !== 'status').map(key => (
-                        <div key={key} className="form-group">
-                            <label>{key.replace(/_/g, ' ')}</label>
-                            {isEditing ? (
-                                <input
-                                    type="text"
-                                    name={key}
-                                    value={formData[key] || ''}
-                                    onChange={handleChange}
-                                    disabled={key === 'id' || key === 'ID'}
-                                />
-                            ) : (
-                                <div className="field-value">{formData[key]}</div>
-                            )}
+                    {/* Display error notification if present */}
+                    {formData.error && (
+                        <div className="error-notification">
+                            <strong>⚠️ Error:</strong> {formData.error}
                         </div>
-                    ))}
+                    )}
+
+                    {Object.keys(formData)
+                        .filter(k => k !== 'Timestamp' && k !== 'status' && k !== 'acceptance_status' && k !== 'error')
+                        .map(key => (
+                            <div key={key} className="form-group">
+                                <label>{key.replace(/_/g, ' ')}</label>
+                                {isEditing ? (
+                                    <input
+                                        type="text"
+                                        name={key}
+                                        value={formData[key] || ''}
+                                        onChange={handleChange}
+                                        disabled={key === 'id' || key === 'ID'}
+                                    />
+                                ) : (
+                                    <div className="field-value">{formData[key]}</div>
+                                )}
+                            </div>
+                        ))}
                 </div>
             </div>
         </div>

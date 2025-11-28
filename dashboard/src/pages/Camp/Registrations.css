@@ -24,7 +24,32 @@
   font-weight: bold;
 }
 
-.camp-details-table tbody tr:hover {
+/* Row background colors based on status */
+.camp-details-table tbody tr.row-invalid {
+  background-color: #f8d7da;
+  /* Light red for invalid */
+}
+
+.camp-details-table tbody tr.row-duplicate {
+  background-color: #fff3cd;
+  /* Light yellow for duplicates */
+}
+
+.camp-details-table tbody tr.row-valid {
+  background-color: #ffffff;
+  /* White for valid */
+}
+
+/* Hover states */
+.camp-details-table tbody tr.row-invalid:hover {
+  background-color: #f5c6cb;
+}
+
+.camp-details-table tbody tr.row-duplicate:hover {
+  background-color: #ffeaa7;
+}
+
+.camp-details-table tbody tr.row-valid:hover {
   background-color: #f9fafb;
 }
 

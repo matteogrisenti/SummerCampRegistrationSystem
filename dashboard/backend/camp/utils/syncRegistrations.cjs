@@ -49,9 +49,11 @@ async function syncRegistrations(campSlug, xlsxPath, sheetId) {
     });
 
     // Prepare "Original Registrations" data (Full copy with IDs)
+    // Also initialize acceptance_status to 'pending' for all new registrations
     const originalRegistrationsWithIds = allDownloadedRegistrations.map((reg, index) => ({
         ID: index + 1,
-        ...reg
+        ...reg,
+        acceptance_status: reg.acceptance_status || 'pending'  // Initialize if not present
     }));
 
     // Check if the file exists locally
@@ -116,12 +118,13 @@ async function syncRegistrations(campSlug, xlsxPath, sheetId) {
             console.log('[SYNC] new registrations count: ', newRawRegistrations.length);
 
             // Concat new rows to old ones
-            // We need to ensure new rows also have IDs. 
+            // We need to ensure new rows also have IDs and acceptance_status
             // The IDs for new rows should continue from where the old ones left off.
             const startingId = oldRegistrations.length + 1;
             const newRegistrationsWithIds = newRawRegistrations.map((reg, index) => ({
                 ID: startingId + index,
-                ...reg
+                ...reg,
+                acceptance_status: reg.acceptance_status || 'pending'  // Initialize if not present
             }));
 
             registrations = oldRegistrations.concat(newRegistrationsWithIds);

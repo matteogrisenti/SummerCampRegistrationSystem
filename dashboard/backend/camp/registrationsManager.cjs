@@ -44,11 +44,32 @@ function postRegistration(campSlug, new_registration) {
         // Find the registration by ID (handle both id and ID)
         const regId = registrationsData.length + 1;
 
+        // Get the Timestamp in format: DD/MM/YYYY HH.MM.SS
+        const now = new Date();
+        const day = String(now.getDate()).padStart(2, '0');
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const year = now.getFullYear();
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timestamp = `${day}/${month}/${year} ${hours}.${minutes}.${seconds}`;
+        new_registration.Timestamp = timestamp;
+
+        // Set acceptance status to 'pending' for new registrations
+        new_registration.acceptance_status = 'pending';
+
         // Add the new registration to the array
         registrationsData.push({ ...new_registration, ID: regId });
 
         // Validate the new set of registrations
         let validationData = validatedRegistration(registrationsData)
+        let processedData = {
+            validCount: validationData.validRegistrations.length,
+            invalidCount: validationData.invalidRegistrations.length,
+            siblingGroupsCount: validationData.siblingGroups.length,
+            duplicateCount: validationData.duplicateRegistrations.length,
+            totalCount: registrationsData.length,
+        }
 
         // Update 'All Registrations' sheet
         const newAllSheet = XLSX.utils.json_to_sheet(registrationsData);
@@ -64,7 +85,7 @@ function postRegistration(campSlug, new_registration) {
         // Write the file back
         XLSX.writeFile(workbook, filePath);
 
-        return { success: true, data: registrationsData, validationData: validationData };
+        return { success: true, data: registrationsData, processedData: processedData };
     } catch (error) {
         console.error('Error modifying registration:', error);
         return { success: false, error: error.message, data: [] };
@@ -111,6 +132,13 @@ function deleteRegistration(campSlug, registration_id) {
 
         // Validate the new set of registrations
         let validationData = validatedRegistration(registrationsData)
+        let processedData = {
+            validCount: validationData.validRegistrations.length,
+            invalidCount: validationData.invalidRegistrations.length,
+            siblingGroupsCount: validationData.siblingGroups.length,
+            duplicateCount: validationData.duplicateRegistrations.length,
+            totalCount: registrationsData.length,
+        }
 
         // Update 'All Registrations' sheet
         const newAllSheet = XLSX.utils.json_to_sheet(registrationsData);
@@ -119,7 +147,7 @@ function deleteRegistration(campSlug, registration_id) {
         // Write the file back
         XLSX.writeFile(workbook, filePath);
 
-        return { success: true, data: registrationsData, validationData: validationData };
+        return { success: true, data: registrationsData, processedData: processedData };
     } catch (error) {
         console.error('Error deleting registration:', error);
         return { success: false, error: error.message, data: [] };
@@ -162,6 +190,13 @@ function modifyRegistration(campSlug, modified_registration) {
 
         // Validate the new set of registrations
         let validationData = validatedRegistration(registrationsData)
+        let processedData = {
+            validCount: validationData.validRegistrations.length,
+            invalidCount: validationData.invalidRegistrations.length,
+            siblingGroupsCount: validationData.siblingGroups.length,
+            duplicateCount: validationData.duplicateRegistrations.length,
+            totalCount: registrationsData.length,
+        }
 
         // Update 'All Registrations' sheet
         const newAllSheet = XLSX.utils.json_to_sheet(registrationsData);
@@ -193,7 +228,7 @@ function modifyRegistration(campSlug, modified_registration) {
         // Write the file back
         XLSX.writeFile(workbook, filePath);
 
-        return { success: true, data: registrationsData, validationData: validationData };
+        return { success: true, data: registrationsData, processedData: processedData };
     } catch (error) {
         console.error('Error modifying registration:', error);
         return { success: false, error: error.message, data: [] };
@@ -201,6 +236,108 @@ function modifyRegistration(campSlug, modified_registration) {
 }
 
 
+function updateAcceptanceStatus(campSlug, registrationIds, status) {
+    // Update the acceptance status of multiple registrations
+    const campDir = path.join(CAMPS_DIR, campSlug);
+    const filePath = path.join(campDir, 'registrations.xlsx');
+
+    if (!fs.existsSync(filePath)) {
+        return { success: false, error: 'Registrations file not found', data: [] };
+    }
+
+    try {
+        const workbook = XLSX.readFile(filePath);
+        const allSheet = workbook.Sheets['All Registrations'];
+        const registrationsData = XLSX.utils.sheet_to_json(allSheet);
+
+        // Update the acceptance status for the specified registrations
+        let updatedCount = 0;
+        registrationsData.forEach(reg => {
+            if (registrationIds.includes(reg.ID)) {
+                reg.acceptance_status = status;
+                updatedCount++;
+            }
+        });
+
+        if (updatedCount === 0) {
+            return { success: false, error: 'No matching registrations found', data: registrationsData };
+        }
+
+        // Validate the new set of registrations
+        let validationData = validatedRegistration(registrationsData);
+        let processedData = {
+            validCount: validationData.validRegistrations.length,
+            invalidCount: validationData.invalidRegistrations.length,
+            siblingGroupsCount: validationData.siblingGroups.length,
+            duplicateCount: validationData.duplicateRegistrations.length,
+            totalCount: registrationsData.length,
+        };
+
+        // Update 'All Registrations' sheet
+        const newAllSheet = XLSX.utils.json_to_sheet(registrationsData);
+        workbook.Sheets['All Registrations'] = newAllSheet;
+
+        // Update or create 'Acceptance Status' sheet with only accepted/rejected registrations
+        const acceptanceData = registrationsData
+            .filter(reg => reg.acceptance_status && reg.acceptance_status !== 'pending')
+            .map(reg => ({
+                ID: reg.ID,
+                Name: reg['Nome del bambino'] || reg.Name || 'N/A',
+                Surname: reg['Cognome del bambino'] || reg.Surname || 'N/A',
+                Status: reg.acceptance_status,
+                Updated: new Date().toLocaleString('it-IT')
+            }));
+
+        if (acceptanceData.length > 0) {
+            const acceptanceSheet = XLSX.utils.json_to_sheet(acceptanceData);
+
+            // Apply colors to the sheet based on status
+            const range = XLSX.utils.decode_range(acceptanceSheet['!ref']);
+            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
+                const statusCell = acceptanceSheet[XLSX.utils.encode_cell({ r: R, c: 3 })]; // Status column
+                if (statusCell && statusCell.v) {
+                    const status = statusCell.v;
+                    // Set background color for the entire row
+                    for (let C = range.s.c; C <= range.e.c; ++C) {
+                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                        if (!acceptanceSheet[cellAddress]) continue;
+
+                        if (!acceptanceSheet[cellAddress].s) acceptanceSheet[cellAddress].s = {};
+                        if (!acceptanceSheet[cellAddress].s.fill) acceptanceSheet[cellAddress].s.fill = {};
+
+                        if (status === 'accepted') {
+                            // Light blue for accepted
+                            acceptanceSheet[cellAddress].s.fill = {
+                                patternType: 'solid',
+                                fgColor: { rgb: 'D1ECF1' }
+                            };
+                        } else if (status === 'rejected') {
+                            // Light purple-red for rejected
+                            acceptanceSheet[cellAddress].s.fill = {
+                                patternType: 'solid',
+                                fgColor: { rgb: 'F8D7DA' }
+                            };
+                        }
+                    }
+                }
+            }
+
+            if (workbook.Sheets['Acceptance Status']) {
+                workbook.Sheets['Acceptance Status'] = acceptanceSheet;
+            } else {
+                XLSX.utils.book_append_sheet(workbook, acceptanceSheet, 'Acceptance Status');
+            }
+        }
+
+        // Write the file back
+        XLSX.writeFile(workbook, filePath);
+
+        return { success: true, data: registrationsData, processedData: processedData };
+    } catch (error) {
+        console.error('Error updating acceptance status:', error);
+        return { success: false, error: error.message, data: [] };
+    }
+}
 
 
 
@@ -208,5 +345,6 @@ module.exports = {
     getRegistrations,
     postRegistration,
     deleteRegistration,
-    modifyRegistration
+    modifyRegistration,
+    updateAcceptanceStatus
 };

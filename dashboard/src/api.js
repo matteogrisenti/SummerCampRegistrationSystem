@@ -297,5 +297,14 @@ export const api = {
     }
   },
 
+  async updateAcceptanceStatus(campSlug, registrationIds, status) {
+    try {
+      return await window.electronApi.updateAcceptanceStatus(campSlug, registrationIds, status);
+    } catch (error) {
+      console.error('Error updating acceptance status:', error);
+      return { success: false, error: error.message, data: [] };
+    }
+  },
+
 
 };

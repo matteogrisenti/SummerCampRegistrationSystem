@@ -4,6 +4,7 @@ import { api } from '../../api';
 import { ArrowLeft, Calendar } from 'lucide-react';
 import GeneralInfo from './GeneralInfo';
 import Registrations from './Registrations';
+import AcceptanceManagement from './AcceptanceManagement';
 import './Camp.css';
 
 export default function Camp() {
@@ -202,6 +203,12 @@ export default function Camp() {
           >
             Registration Management
           </button>
+          <button
+            className={`camp-details-tab ${activeTab === 'acceptance' ? 'active' : ''}`}
+            onClick={() => setActiveTab('acceptance')}
+          >
+            Acceptance Management
+          </button>
         </div>
 
         {/* Tab Content */}
@@ -218,6 +225,16 @@ export default function Camp() {
             camp={camp}
             registrations={registrations}
             setRegistrations={setRegistrations}
+            setProcessingData={setProcessingData}
+          />
+        )}
+
+        {activeTab === 'acceptance' && (
+          <AcceptanceManagement
+            camp={camp}
+            registrations={registrations}
+            setRegistrations={setRegistrations}
+            setProcessingData={setProcessingData}
           />
         )}
       </div>

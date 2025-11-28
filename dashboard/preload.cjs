@@ -102,6 +102,7 @@ const api = {
   postRegistration: (slug, registration) => ipcRenderer.invoke('camp:registrations:post', slug, registration),
   deleteRegistration: (slug, registration_id) => ipcRenderer.invoke('camp:registrations:delete', slug, registration_id),
   processCampRegistrations: (slug) => ipcRenderer.invoke('camp:process', slug),
+  updateAcceptanceStatus: (slug, registrationIds, status) => ipcRenderer.invoke('camp:registrations:update-acceptance-status', slug, registrationIds, status),
 };
 
 /**

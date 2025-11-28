@@ -414,3 +414,16 @@ ipcMain.handle('camp:process', async (event, slug) => {
     };
   }
 });
+
+// camp:registrations:update-acceptance-status
+ipcMain.handle('camp:registrations:update-acceptance-status', async (event, slug, registrationIds, status) => {
+  try {
+    const { updateAcceptanceStatus } = require('./camp/registrationsManager.cjs');
+    const result = updateAcceptanceStatus(slug, registrationIds, status);
+    return result;
+  } catch (error) {
+    console.error('Error updating acceptance status:', error);
+    return { success: false, error: error.message, data: [] };
+  }
+});
+
