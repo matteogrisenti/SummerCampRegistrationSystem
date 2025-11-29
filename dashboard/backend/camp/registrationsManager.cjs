@@ -2,28 +2,62 @@
 const fs = require('fs');
 const path = require('path');
 const XLSX = require('xlsx');
-const { validatedRegistration } = require('./registrationProcessor.cjs')
+const { validatedRegistration } = require('./utils/utils.cjs')
+const { syncRegistrations } = require('./utils/syncRegistrations.cjs');
 
 // Base directory for camps data
 const CAMPS_DIR = path.join(process.cwd(), 'backend/data');
 
 
-function getRegistrations(campSlug) {
-    // Read the local registrations.xlsx file and return the registration data
-    const campDir = path.join(CAMPS_DIR, campSlug);
-    const filePath = path.join(campDir, 'registrations.xlsx');
-
-    if (!fs.existsSync(filePath)) {
-        return { success: false, error: 'Registrations file not found', data: [] };
-    }
+async function getRegistrations(campSlug) {
     try {
-        const workbook = XLSX.readFile(filePath);
-        const sheet = workbook.Sheets['All Registrations'];
-        const registrationsData = XLSX.utils.sheet_to_json(sheet);
-        return { success: true, data: registrationsData };
-    } catch (error) {
-        console.error('Error reading registrations file:', error);
-        return { success: false, error: error.message, data: [] };
+        // Read the local registrations.xlsx file and return the registration data
+        const campDir = path.join(CAMPS_DIR, campSlug);
+        const xlsxPath = path.join(campDir, 'registrations.xlsx');
+
+        // 1. Sync and merge registrations (download new, merge with old, save to file)
+        const { registrations, _ } = await syncRegistrations(campSlug);
+        console.log('[SYNC] Registrations synced successfully');
+
+        // Validate the new set of registrations
+        let validationData = validatedRegistration(registrations)
+        let processedData = {
+            validCount: validationData.validRegistrations.length,
+            invalidCount: validationData.invalidRegistrations.length,
+            siblingGroupsCount: validationData.siblingGroups.length,
+            duplicateCount: validationData.duplicateRegistrations.length,
+            totalCount: registrations.length,
+        }
+        // 3. Add the processing tag to the All Registrations sheet
+        // Open existing workbook
+        const workbook = XLSX.readFile(xlsxPath);
+
+        // Remove the existing 'All Registrations' sheet if it exists
+        if (workbook.Sheets['All Registrations']) {
+            delete workbook.Sheets['All Registrations'];
+            const index = workbook.SheetNames.indexOf('All Registrations');
+            if (index !== -1) workbook.SheetNames.splice(index, 1);
+        }
+
+        // Add updated 'All Registrations' sheet
+        const processedAllSheet = XLSX.utils.json_to_sheet(registrations);
+        XLSX.utils.book_append_sheet(workbook, processedAllSheet, 'All Registrations');
+
+        // Write back to the same file
+        XLSX.writeFile(workbook, xlsxPath);
+
+        return {
+            success: true,
+            data: registrations,
+            processedData: processedData,
+        };
+    }
+    catch (error) {
+        console.error('Processing error:', error);
+        return {
+            success: false,
+            error: error.message
+        };
     }
 }
 
@@ -156,6 +190,12 @@ function deleteRegistration(campSlug, registration_id) {
 
 
 function modifyRegistration(campSlug, modified_registration) {
+
+    //Check if the modified_registration is an array, if not convert it to an array
+    if (!Array.isArray(modified_registration)) {
+        modified_registration = [modified_registration];
+    }
+
     // Read the local registrations.xlsx file and return the registration data
     const campDir = path.join(CAMPS_DIR, campSlug);
     const filePath = path.join(campDir, 'registrations.xlsx');
@@ -168,25 +208,53 @@ function modifyRegistration(campSlug, modified_registration) {
         const allSheet = workbook.Sheets['All Registrations'];
         const registrationsData = XLSX.utils.sheet_to_json(allSheet);
 
-        // Find the registration by ID (handle both id and ID)
-        const regId = modified_registration.id || modified_registration.ID;
-        const index = registrationsData.findIndex(r => r.ID == regId);
+        // Update each registration
+        for (let i = 0; i < modified_registration.length; i++) {
+            const new_registration = modified_registration[i];
+            // Find the registration by ID (handle both id and ID)
+            const regId = new_registration.id || new_registration.ID;
+            const index = registrationsData.findIndex(r => r.ID == regId);
 
-        if (index === -1) {
-            return { success: false, error: `Registration with ID ${regId} not found`, data: [] };
+            if (index === -1) {
+                return { success: false, error: `Registration with ID ${regId} not found`, data: [] };
+            }
+
+            // Extract the original registration
+            const original_registration = { ...registrationsData[index] };
+
+            // Update the original registration with the new one
+            // We merge the modified fields into the original registration
+            const updated_registration = { ...original_registration, ...new_registration };
+            // Ensure ID is preserved and correct
+            updated_registration.ID = original_registration.ID;
+
+            // Update the array
+            registrationsData[index] = updated_registration;
+
+            // Save the couple of original and modified registration in the Modified Registration sheet
+            let modifiedSheet = workbook.Sheets['Modified Registrations'];
+            let modifiedData = [];
+            if (modifiedSheet) {
+                modifiedData = XLSX.utils.sheet_to_json(modifiedSheet);
+            }
+
+            // Create the arrow row
+            const arrowRow = { "ID": "->" };
+
+            modifiedData.push(original_registration);
+            modifiedData.push(arrowRow);
+            modifiedData.push(updated_registration);
+
+            const newModifiedSheet = XLSX.utils.json_to_sheet(modifiedData);
+
+            // Update or append the sheet
+            if (workbook.Sheets['Modified Registrations']) {
+                workbook.Sheets['Modified Registrations'] = newModifiedSheet;
+            } else {
+                XLSX.utils.book_append_sheet(workbook, newModifiedSheet, 'Modified Registrations');
+            }
+
         }
-
-        // Extract the original registration
-        const original_registration = { ...registrationsData[index] };
-
-        // Update the original registration with the new one
-        // We merge the modified fields into the original registration
-        const updated_registration = { ...original_registration, ...modified_registration };
-        // Ensure ID is preserved and correct
-        updated_registration.ID = original_registration.ID;
-
-        // Update the array
-        registrationsData[index] = updated_registration;
 
         // Validate the new set of registrations
         let validationData = validatedRegistration(registrationsData)
@@ -202,29 +270,6 @@ function modifyRegistration(campSlug, modified_registration) {
         const newAllSheet = XLSX.utils.json_to_sheet(registrationsData);
         workbook.Sheets['All Registrations'] = newAllSheet;
 
-        // Save the couple of original and modified registration in the Modified Registration sheet
-        let modifiedSheet = workbook.Sheets['Modified Registrations'];
-        let modifiedData = [];
-        if (modifiedSheet) {
-            modifiedData = XLSX.utils.sheet_to_json(modifiedSheet);
-        }
-
-        // Create the arrow row
-        const arrowRow = { "ID": "->" };
-
-        modifiedData.push(original_registration);
-        modifiedData.push(arrowRow);
-        modifiedData.push(updated_registration);
-
-        const newModifiedSheet = XLSX.utils.json_to_sheet(modifiedData);
-
-        // Update or append the sheet
-        if (workbook.Sheets['Modified Registrations']) {
-            workbook.Sheets['Modified Registrations'] = newModifiedSheet;
-        } else {
-            XLSX.utils.book_append_sheet(workbook, newModifiedSheet, 'Modified Registrations');
-        }
-
         // Write the file back
         XLSX.writeFile(workbook, filePath);
 
@@ -236,115 +281,10 @@ function modifyRegistration(campSlug, modified_registration) {
 }
 
 
-function updateAcceptanceStatus(campSlug, registrationIds, status) {
-    // Update the acceptance status of multiple registrations
-    const campDir = path.join(CAMPS_DIR, campSlug);
-    const filePath = path.join(campDir, 'registrations.xlsx');
-
-    if (!fs.existsSync(filePath)) {
-        return { success: false, error: 'Registrations file not found', data: [] };
-    }
-
-    try {
-        const workbook = XLSX.readFile(filePath);
-        const allSheet = workbook.Sheets['All Registrations'];
-        const registrationsData = XLSX.utils.sheet_to_json(allSheet);
-
-        // Update the acceptance status for the specified registrations
-        let updatedCount = 0;
-        registrationsData.forEach(reg => {
-            if (registrationIds.includes(reg.ID)) {
-                reg.acceptance_status = status;
-                updatedCount++;
-            }
-        });
-
-        if (updatedCount === 0) {
-            return { success: false, error: 'No matching registrations found', data: registrationsData };
-        }
-
-        // Validate the new set of registrations
-        let validationData = validatedRegistration(registrationsData);
-        let processedData = {
-            validCount: validationData.validRegistrations.length,
-            invalidCount: validationData.invalidRegistrations.length,
-            siblingGroupsCount: validationData.siblingGroups.length,
-            duplicateCount: validationData.duplicateRegistrations.length,
-            totalCount: registrationsData.length,
-        };
-
-        // Update 'All Registrations' sheet
-        const newAllSheet = XLSX.utils.json_to_sheet(registrationsData);
-        workbook.Sheets['All Registrations'] = newAllSheet;
-
-        // Update or create 'Acceptance Status' sheet with only accepted/rejected registrations
-        const acceptanceData = registrationsData
-            .filter(reg => reg.acceptance_status && reg.acceptance_status !== 'pending')
-            .map(reg => ({
-                ID: reg.ID,
-                Name: reg['Nome del bambino'] || reg.Name || 'N/A',
-                Surname: reg['Cognome del bambino'] || reg.Surname || 'N/A',
-                Status: reg.acceptance_status,
-                Updated: new Date().toLocaleString('it-IT')
-            }));
-
-        if (acceptanceData.length > 0) {
-            const acceptanceSheet = XLSX.utils.json_to_sheet(acceptanceData);
-
-            // Apply colors to the sheet based on status
-            const range = XLSX.utils.decode_range(acceptanceSheet['!ref']);
-            for (let R = range.s.r + 1; R <= range.e.r; ++R) {
-                const statusCell = acceptanceSheet[XLSX.utils.encode_cell({ r: R, c: 3 })]; // Status column
-                if (statusCell && statusCell.v) {
-                    const status = statusCell.v;
-                    // Set background color for the entire row
-                    for (let C = range.s.c; C <= range.e.c; ++C) {
-                        const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
-                        if (!acceptanceSheet[cellAddress]) continue;
-
-                        if (!acceptanceSheet[cellAddress].s) acceptanceSheet[cellAddress].s = {};
-                        if (!acceptanceSheet[cellAddress].s.fill) acceptanceSheet[cellAddress].s.fill = {};
-
-                        if (status === 'accepted') {
-                            // Light blue for accepted
-                            acceptanceSheet[cellAddress].s.fill = {
-                                patternType: 'solid',
-                                fgColor: { rgb: 'D1ECF1' }
-                            };
-                        } else if (status === 'rejected') {
-                            // Light purple-red for rejected
-                            acceptanceSheet[cellAddress].s.fill = {
-                                patternType: 'solid',
-                                fgColor: { rgb: 'F8D7DA' }
-                            };
-                        }
-                    }
-                }
-            }
-
-            if (workbook.Sheets['Acceptance Status']) {
-                workbook.Sheets['Acceptance Status'] = acceptanceSheet;
-            } else {
-                XLSX.utils.book_append_sheet(workbook, acceptanceSheet, 'Acceptance Status');
-            }
-        }
-
-        // Write the file back
-        XLSX.writeFile(workbook, filePath);
-
-        return { success: true, data: registrationsData, processedData: processedData };
-    } catch (error) {
-        console.error('Error updating acceptance status:', error);
-        return { success: false, error: error.message, data: [] };
-    }
-}
-
-
 
 module.exports = {
     getRegistrations,
     postRegistration,
     deleteRegistration,
     modifyRegistration,
-    updateAcceptanceStatus
 };

@@ -11,12 +11,13 @@ const { downloadSheetAsExcel } = require('../../services/google/sheets.cjs');
  * Downloads new data, merges with existing local data, updates metadata,
  * and ensures the local Excel file has the required structure.
  */
-async function syncRegistrations(campSlug, xlsxPath, sheetId) {
+async function syncRegistrations(campSlug) {
     const auth = await authorize();
     const dataDir = path.join(process.cwd(), 'backend/data', campSlug);
     const metadataPath = path.join(dataDir, 'metadata.json');
     const localRegistrationsPath = path.join(dataDir, 'registrations.xlsx');
 
+    let sheetID = null;
     let registrations = [];
     let lastRowProcessed = 0;
     let metadata = {};
@@ -25,6 +26,7 @@ async function syncRegistrations(campSlug, xlsxPath, sheetId) {
     if (fs.existsSync(metadataPath)) {
         try {
             metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
+            sheetID = metadata.sheet_id;
             lastRowProcessed = metadata.last_row_processed || 0;
         } catch (e) {
             console.warn("Failed to read metadata, starting fresh.");
@@ -32,8 +34,9 @@ async function syncRegistrations(campSlug, xlsxPath, sheetId) {
     }
 
     // Download the latest sheet and get the sheet title and rows
+    // The sheet id is 0 because we are downloading the first sheet
     // We do this BEFORE checking for local file existence because we need the data in both cases
-    const { sheetTitle, rows } = await downloadSheetAsExcel(auth, sheetId);
+    const { sheetTitle, rows } = await downloadSheetAsExcel(auth, sheetID);
 
     // Extract headers and data
     const headers = rows[0];

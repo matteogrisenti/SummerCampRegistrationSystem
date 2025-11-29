@@ -71,7 +71,7 @@ export default function Registrations({ camp, registrations, setRegistrations, s
 
   // Filter out columns we don't want to display
   const columns = Object.keys(registrations[0]).filter(
-    key => key !== 'Timestamp' && key !== 'acceptance_status' && key !== 'error'
+    key => key !== 'Timestamp' && key !== 'acceptance_status' && key !== '_errors' && key !== 'status'
   );
 
   // Helper function to get row background color based on status
@@ -81,19 +81,31 @@ export default function Registrations({ camp, registrations, setRegistrations, s
     return 'row-valid';
   };
 
+  // Helper function to get status badge
+  const getStatusBadge = (status) => {
+    if (status === 'invalid') return <span className="status-badge status-invalid">✗ Invalid</span>;
+    if (status === 'duplicate') return <span className="status-badge status-duplicate">⚠ Duplicate</span>;
+    return <span className="status-badge status-valid">✓ Valid</span>;
+  };
+
   return (
-    <div className="camp-details-registrations-section">
-      <div className="camp-details-registrations-header">
-        <h2>Registration List</h2>
+    <div className="registrations-section">
+      <div className="registrations-header">
+        <h2>Registration Management</h2>
         <button onClick={handleAddRegistration}>+ Add Registration</button>
       </div>
 
-      <div className="camp-details-table-container">
-        <table className="camp-details-table">
+      <div className="registrations-table-container">
+        <table className="registrations-table">
           <thead>
             <tr>
-              {columns.map(col => <th key={col} style={{ minWidth: '120px' }}>{col.replace(/_/g, ' ').toUpperCase()}</th>)}
-              <th style={{ minWidth: '100px' }}>Actions</th>
+              <th style={{ width: '120px' }}>Status</th>
+              {columns.map(col => (
+                <th key={col} style={{ minWidth: '120px' }}>
+                  {col.replace(/_/g, ' ').toUpperCase()}
+                </th>
+              ))}
+              <th style={{ width: '100px', textAlign: 'center' }}>Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -102,20 +114,23 @@ export default function Registrations({ camp, registrations, setRegistrations, s
                 key={reg.ID}
                 onClick={() => handleRowClick(reg)}
                 className={getRowClassName(reg.status)}
-                style={{ cursor: 'pointer' }}
+                title={reg.status === 'invalid' && reg._errors ? reg._errors : ''}
               >
+                <td>{getStatusBadge(reg.status)}</td>
                 {columns.map(col => (
-                  <td key={col}
+                  <td
+                    key={col}
                     style={{
                       minWidth: '120px',
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
                       textOverflow: 'ellipsis'
-                    }}>
+                    }}
+                  >
                     {reg[col] || 'N/A'}
                   </td>
                 ))}
-                <td>
+                <td className="actions-cell">
                   <button onClick={(e) => handleDeleteRegistration(e, reg.ID)}>🗑️</button>
                 </td>
               </tr>

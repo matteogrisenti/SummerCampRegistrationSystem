@@ -30,11 +30,11 @@ export default function Camp() {
     lastFetchedSlug.current = campSlug;
 
     loadCampDetails();      // Load the Metadata Information fo the Camp
-    loadProcessingData();   // Load the Registration Processing Result
-    // loadRegistrations();    // Load the Registration of the Camp
+    loadRegistrations();    // Load the Registration of the Camp
   }, [campSlug]);
 
 
+  // Get the General Info Data
   const loadCampDetails = async () => {
     try {
       setLoading(true);
@@ -53,7 +53,7 @@ export default function Camp() {
     }
   };
 
-
+  // Get the Registration Dataset
   const loadRegistrations = async () => {
     try {
       setLoading(true);
@@ -61,34 +61,19 @@ export default function Camp() {
       const result = await api.getRegistrations(campSlug);
       if (result.success && result.data) {
         setRegistrations(result.data);
+        setProcessingData(result.processedData)
+        setProcessingLoading(false);
+        setProcessingError(null);
       } else {
         setError("Failed to load registrations: " + (result.error || "Unknown error"));
+        setProcessingLoading(false);
+        setProcessingError("Failed to load registrations: " + (result.error || "Unknown error"));
       }
     } catch (err) {
       console.error('Error loading registrations:', err);
       setError("Error loading registrations: " + err.message);
     } finally {
       setLoading(false);
-    }
-  };
-
-
-  const loadProcessingData = async () => {
-    try {
-      setProcessingLoading(true);
-      setProcessingError(null);
-      const result = await api.processCampRegistrations(campSlug);
-      if (result.success && result.data) {
-        setProcessingData(result.data);
-        if (result.data.registrations) setRegistrations(result.data.registrations);
-      } else {
-        setProcessingError(result.error || "Failed to process data");
-      }
-    } catch (err) {
-      console.error('Error processing data:', err);
-      setProcessingError(err.message);
-    } finally {
-      setProcessingLoading(false);
     }
   };
 

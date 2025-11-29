@@ -58,14 +58,14 @@ export default function RegistrationModal({ isOpen, onClose, registration, onSav
                 </div>
                 <div className="modal-body">
                     {/* Display error notification if present */}
-                    {formData.error && (
+                    {formData._errors && (
                         <div className="error-notification">
-                            <strong>⚠️ Error:</strong> {formData.error}
+                            <strong>⚠️ Error:</strong> {formData._errors}
                         </div>
                     )}
 
                     {Object.keys(formData)
-                        .filter(k => k !== 'Timestamp' && k !== 'status' && k !== 'acceptance_status' && k !== 'error')
+                        .filter(k => k !== 'Timestamp' && k !== 'status' && k !== 'acceptance_status' && k !== '_errors')
                         .map(key => (
                             <div key={key} className="form-group">
                                 <label>{key.replace(/_/g, ' ')}</label>

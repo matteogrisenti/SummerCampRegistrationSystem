@@ -210,10 +210,34 @@ function getColumnMapping(data) {
     return mapping;
 }
 
+
+function validatedRegistration(registrations) {
+    /* This function validate a set of registration and update them adding validation tag and eventuali
+    validation errors */
+
+    // 1. Validate and categorize registrations
+    const { validRegistrations, invalidRegistrations } = validateRegistrations(registrations);
+
+    // 2. Identify duplicated registrations
+    const duplicateRegistrations = identifyDuplicateRegistrations(registrations);
+
+    // 3. Identify possible sibling groups
+    const siblingGroups = identifySiblingGroups(registrations);
+
+    return {
+        validRegistrations,
+        invalidRegistrations,
+        duplicateRegistrations,
+        siblingGroups
+    }
+
+}
+
 module.exports = {
     readRegistrations,
     getColumnMapping,
     validateRegistrations,
     identifyDuplicateRegistrations,
     identifySiblingGroups,
+    validatedRegistration
 };

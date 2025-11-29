@@ -288,18 +288,10 @@ export const api = {
     }
   },
 
-  async processCampRegistrations(campSlug) {
+  async updateAcceptanceStatus(campSlug, registrations, status) {
     try {
-      return await window.electronApi.processCampRegistrations(campSlug);
-    } catch (error) {
-      console.error('Error processing camp registrations:', error);
-      return { success: false, error: error.message };
-    }
-  },
-
-  async updateAcceptanceStatus(campSlug, registrationIds, status) {
-    try {
-      return await window.electronApi.updateAcceptanceStatus(campSlug, registrationIds, status);
+      registrations.forEach(registration => { registration.acceptance_status = status })
+      return await window.electronApi.modifyRegistration(campSlug, registrations)
     } catch (error) {
       console.error('Error updating acceptance status:', error);
       return { success: false, error: error.message, data: [] };

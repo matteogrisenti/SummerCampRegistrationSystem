@@ -330,8 +330,7 @@ ipcMain.handle('camp:delete', async (event, campSlug) => {
 /* =================================================================================================
      REGISTRATIONS
 ================================================================================================ */
-const { processRegistrations } = require('./camp/registrationProcessor.cjs');
-const { getRegistrations, postRegistration, deleteRegistration, modifyRegistration } = require('./camp/registrationsManager.cjs');
+const { getRegistrations, postRegistration, deleteRegistration, modifyRegistration, updateAcceptanceStatus } = require('./camp/registrationsManager.cjs');
 
 // camp:registrations:get
 ipcMain.handle('camp:registrations:get', async (event, slug) => {
@@ -373,56 +372,6 @@ ipcMain.handle('camp:registrations:modify', async (event, slug, registration) =>
     return result;
   } catch (error) {
     console.error('Error modifying registration:', error);
-    return { success: false, error: error.message, data: [] };
-  }
-});
-
-// camp:process
-ipcMain.handle('camp:process', async (event, slug) => {
-  try {
-    const fs = require('fs');
-
-    if (!fs.existsSync(campsJsonPath)) {
-      return {
-        success: false,
-        error: `Camp not found: ${slug}`
-      };
-    }
-
-    const campsData = fs.readFileSync(campsJsonPath, 'utf8');
-    const camps = JSON.parse(campsData);
-
-    const camp = camps.find(c => c.camp_slug === slug);
-
-    if (!camp) {
-      return {
-        success: false,
-        error: `Camp not found: ${slug}`
-      };
-    }
-
-    // Process the registrations
-    const result = await processRegistrations(slug, camp.xlsx_path, camp.sheet_id);
-
-    return result;
-
-  } catch (error) {
-    console.error('Processing handler error:', error);
-    return {
-      success: false,
-      error: error.message
-    };
-  }
-});
-
-// camp:registrations:update-acceptance-status
-ipcMain.handle('camp:registrations:update-acceptance-status', async (event, slug, registrationIds, status) => {
-  try {
-    const { updateAcceptanceStatus } = require('./camp/registrationsManager.cjs');
-    const result = updateAcceptanceStatus(slug, registrationIds, status);
-    return result;
-  } catch (error) {
-    console.error('Error updating acceptance status:', error);
     return { success: false, error: error.message, data: [] };
   }
 });

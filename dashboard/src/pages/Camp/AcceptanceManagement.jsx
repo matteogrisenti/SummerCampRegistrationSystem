@@ -28,12 +28,12 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
             return priorityA - priorityB;
         });
 
-    const handleSelectRegistration = (regId) => {
+    const handleSelectRegistration = (registration) => {
         const newSelected = new Set(selectedRegistrations);
-        if (newSelected.has(regId)) {
-            newSelected.delete(regId);
+        if (newSelected.has(registration)) {
+            newSelected.delete(registration);
         } else {
-            newSelected.add(regId);
+            newSelected.add(registration);
         }
         setSelectedRegistrations(newSelected);
     };
@@ -42,7 +42,7 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
         if (selectedRegistrations.size === filteredRegistrations.length) {
             setSelectedRegistrations(new Set());
         } else {
-            setSelectedRegistrations(new Set(filteredRegistrations.map(r => r.ID)));
+            setSelectedRegistrations(filteredRegistrations);
         }
     };
 
@@ -134,7 +134,7 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
     if (registrations.length === 0) return <p>No registrations yet</p>;
 
     const columns = Object.keys(registrations[0]).filter(
-        key => key !== 'Timestamp' && key !== 'acceptance_status'
+        key => key !== 'Timestamp' && key !== 'acceptance_status' && key !== '_errors' && key !== 'status'
     );
 
     const getStatusBadge = (status) => {
@@ -222,8 +222,8 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
                                 <td>
                                     <input
                                         type="checkbox"
-                                        checked={selectedRegistrations.has(reg.ID)}
-                                        onChange={() => handleSelectRegistration(reg.ID)}
+                                        checked={selectedRegistrations.has(reg)}
+                                        onChange={() => handleSelectRegistration(reg)}
                                     />
                                 </td>
                                 <td>{getStatusBadge(reg.acceptance_status)}</td>
