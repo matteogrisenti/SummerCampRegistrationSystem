@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { api } from '../../api';
 import './Registrations.css';
 import RegistrationModal from './RegistrationModal';
@@ -6,6 +6,11 @@ import RegistrationModal from './RegistrationModal';
 export default function Registrations({ camp, registrations, setRegistrations, setProcessingData }) {
   const [selectedRegistration, setSelectedRegistration] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const tableRef = useRef(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
+  const [hasDragged, setHasDragged] = useState(false);
 
   const handleDeleteRegistration = async (e, registrationId) => {
     e.stopPropagation(); // Prevent row click
@@ -37,6 +42,11 @@ export default function Registrations({ camp, registrations, setRegistrations, s
   };
 
   const handleRowClick = (registration) => {
+    // Don't open modal if user was dragging
+    if (hasDragged) {
+      setHasDragged(false);
+      return;
+    }
     setSelectedRegistration(registration);
     setIsModalOpen(true);
   };
@@ -67,6 +77,42 @@ export default function Registrations({ camp, registrations, setRegistrations, s
     }
   };
 
+  // Drag scrolling handlers
+  const handleMouseDown = (e) => {
+    if (!tableRef.current) return;
+    setIsDragging(true);
+    setHasDragged(false); // Reset drag state
+    setStartX(e.pageX - tableRef.current.offsetLeft);
+    setScrollLeft(tableRef.current.scrollLeft);
+    tableRef.current.style.cursor = 'grabbing';
+    tableRef.current.style.userSelect = 'none';
+  };
+
+  const handleMouseLeave = () => {
+    if (!tableRef.current) return;
+    setIsDragging(false);
+    tableRef.current.style.cursor = 'grab';
+    tableRef.current.style.userSelect = 'auto';
+  };
+
+  const handleMouseUp = () => {
+    if (!tableRef.current) return;
+    setIsDragging(false);
+    tableRef.current.style.cursor = 'grab';
+    tableRef.current.style.userSelect = 'auto';
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging || !tableRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tableRef.current.offsetLeft;
+    const walk = (x - startX) * 2; // Scroll speed multiplier
+    if (Math.abs(walk) > 5) { // Only mark as dragged if moved more than 5px
+      setHasDragged(true);
+    }
+    tableRef.current.scrollLeft = scrollLeft - walk;
+  };
+
   if (registrations.length === 0) return <p>No registrations yet</p>;
 
   // Filter out columns we don't want to display
@@ -95,7 +141,15 @@ export default function Registrations({ camp, registrations, setRegistrations, s
         <button onClick={handleAddRegistration}>+ Add Registration</button>
       </div>
 
-      <div className="registrations-table-container">
+      <div
+        className="registrations-table-container"
+        ref={tableRef}
+        onMouseDown={handleMouseDown}
+        onMouseLeave={handleMouseLeave}
+        onMouseUp={handleMouseUp}
+        onMouseMove={handleMouseMove}
+        style={{ cursor: 'grab' }}
+      >
         <table className="registrations-table">
           <thead>
             <tr>

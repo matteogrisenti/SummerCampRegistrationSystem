@@ -1,10 +1,15 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { api } from '../../api';
 import './AcceptanceManagement.css';
 
 export default function AcceptanceManagement({ camp, registrations, setRegistrations, setProcessingData }) {
     const [selectedRegistrations, setSelectedRegistrations] = useState(new Set());
     const [filterStatus, setFilterStatus] = useState('all'); // all, pending, accepted, rejected
+    const tableRef = useRef(null);
+    const [isDragging, setIsDragging] = useState(false);
+    const [startX, setStartX] = useState(0);
+    const [scrollLeft, setScrollLeft] = useState(0);
+    const [hasDragged, setHasDragged] = useState(false);
 
     // Filter and sort registrations based on acceptance status
     // Sort order: Accepted → Pending → Rejected
@@ -29,6 +34,11 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
         });
 
     const handleSelectRegistration = (registration) => {
+        // Don't toggle checkbox if user was dragging
+        if (hasDragged) {
+            setHasDragged(false);
+            return;
+        }
         const newSelected = new Set(selectedRegistrations);
         if (newSelected.has(registration)) {
             newSelected.delete(registration);
@@ -42,7 +52,7 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
         if (selectedRegistrations.size === filteredRegistrations.length) {
             setSelectedRegistrations(new Set());
         } else {
-            setSelectedRegistrations(filteredRegistrations);
+            setSelectedRegistrations(new Set(filteredRegistrations));
         }
     };
 
@@ -131,6 +141,42 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
         }
     };
 
+    // Drag scrolling handlers
+    const handleMouseDown = (e) => {
+        if (!tableRef.current) return;
+        setIsDragging(true);
+        setHasDragged(false); // Reset drag state
+        setStartX(e.pageX - tableRef.current.offsetLeft);
+        setScrollLeft(tableRef.current.scrollLeft);
+        tableRef.current.style.cursor = 'grabbing';
+        tableRef.current.style.userSelect = 'none';
+    };
+
+    const handleMouseLeave = () => {
+        if (!tableRef.current) return;
+        setIsDragging(false);
+        tableRef.current.style.cursor = 'grab';
+        tableRef.current.style.userSelect = 'auto';
+    };
+
+    const handleMouseUp = () => {
+        if (!tableRef.current) return;
+        setIsDragging(false);
+        tableRef.current.style.cursor = 'grab';
+        tableRef.current.style.userSelect = 'auto';
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging || !tableRef.current) return;
+        e.preventDefault();
+        const x = e.pageX - tableRef.current.offsetLeft;
+        const walk = (x - startX) * 2; // Scroll speed multiplier
+        if (Math.abs(walk) > 5) { // Only mark as dragged if moved more than 5px
+            setHasDragged(true);
+        }
+        tableRef.current.scrollLeft = scrollLeft - walk;
+    };
+
     if (registrations.length === 0) return <p>No registrations yet</p>;
 
     const columns = Object.keys(registrations[0]).filter(
@@ -155,13 +201,13 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
             <div className="acceptance-management-header">
                 <h2>Acceptance Management</h2>
                 <div className="acceptance-management-stats">
-                    <span className="stat-item">
+                    <span className="stat-item stat-accepted">
                         <strong>Accepted:</strong> {registrations.filter(r => r.acceptance_status === 'accepted').length}
                     </span>
-                    <span className="stat-item">
+                    <span className="stat-item stat-rejected">
                         <strong>Rejected:</strong> {registrations.filter(r => r.acceptance_status === 'rejected').length}
                     </span>
-                    <span className="stat-item">
+                    <span className="stat-item stat-pending">
                         <strong>Pending:</strong> {registrations.filter(r => !r.acceptance_status || r.acceptance_status === 'pending').length}
                     </span>
                 </div>
@@ -194,17 +240,19 @@ export default function AcceptanceManagement({ camp, registrations, setRegistrat
                 </div>
             </div>
 
-            <div className="acceptance-table-container">
+            <div
+                className="acceptance-table-container"
+                ref={tableRef}
+                onMouseDown={handleMouseDown}
+                onMouseLeave={handleMouseLeave}
+                onMouseUp={handleMouseUp}
+                onMouseMove={handleMouseMove}
+                style={{ cursor: 'grab' }}
+            >
                 <table className="acceptance-table">
                     <thead>
                         <tr>
-                            <th style={{ width: '50px' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={selectedRegistrations.size === filteredRegistrations.length && filteredRegistrations.length > 0}
-                                    onChange={handleSelectAll}
-                                />
-                            </th>
+                            <th style={{ width: '50px' }}></th>
                             <th style={{ width: '120px' }}>Status</th>
                             {columns.map(col => (
                                 <th key={col} style={{ minWidth: '120px' }}>
